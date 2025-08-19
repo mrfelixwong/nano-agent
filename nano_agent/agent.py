@@ -4,6 +4,18 @@ import time
 from .tools import ToolRegistry
 import re
 
+def _is_numberish(s: str) -> bool:
+    return bool(re.match(r"\s*[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", s or ""))
+
+_DATE_ARGS = re.compile(r"days_between\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})", re.I)
+
+def _repair_date_args(task: str, arg: str) -> str:
+    if _DATE_ARGS.fullmatch(arg.strip()):   # already good
+        return arg
+    m = re.search(r"(\d{4}-\d{2}-\d{2}).*?(\d{4}-\d{2}-\d{2})", task)
+    return f"days_between {m.group(1)} {m.group(2)}" if m else arg
+
+
 @dataclass
 class Cost:
     tokens_in: int = 0
@@ -56,21 +68,29 @@ Respond with exactly ONE line:
                 try:
                     head, arg = out[len("CALL:"):].split("|", 1)
                     tool_name = head.strip(); arg = arg.strip()
+
+                    # fix placeholders like "A B" using dates from the Task
+                    if tool_name == "date_calc":
+                        arg = _repair_date_args(task, arg)
+
+                    # run the tool once (after any repair)
                     res = self.tools.get(tool_name)(arg)
 
-                    # stash evidence for the judge
+                    # stash for judge
                     if tool_name == "calculator":
                         evidence["calculator_result"] = res
-                        # If the calculator returned a clean number, finalize immediately.
-                        if re.fullmatch(r"[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", res.strip()):
-                            trace.append(f"FINAL: {res.strip()}")
-                            return {"final": res.strip(), "trace": trace, "cost": cost, "evidence": evidence}
 
-                    # otherwise continue as before
+                    # auto-finish if the tool returned a number (or starts with one)
+                    if tool_name in {"calculator", "date_calc", "csv_query", "unit_convert"} and _is_numberish(res):
+                        trace.append(f"FINAL: {res.strip()}")
+                        return {"final": res.strip(), "trace": trace, "cost": cost, "evidence": evidence}
+
+                    # otherwise keep looping
                     obs = f"Tool[{tool_name}] -> {res}"
 
                 except Exception as e:
                     obs = f"error: {e}"
+
             else:
                 obs = "error: expected 'CALL:' or 'FINAL:'"
 
@@ -78,4 +98,3 @@ Respond with exactly ONE line:
                 return {"final": obs, "trace": trace, "cost": cost, "evidence": evidence}
 
         return {"final": "error: max steps reached", "trace": trace, "cost": cost, "evidence": evidence}
-
