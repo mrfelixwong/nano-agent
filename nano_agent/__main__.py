@@ -17,10 +17,10 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps:
     out = ag.run(task, token_budget=budget_tokens)
     ok, reason = rule_judge(task, out["final"], out["evidence"])
     c = out["cost"]
-    print(f"FINAL: {out['final']}")
-    print(f"STEPS: {len(out['trace'])} | TOKENS {c['ti']}/{c['to']} | TIME {c['s']:.3f}s")
-    print(f"JUDGE: {'pass' if ok else 'fail'} ({reason})")
-    print("TRACE:")
+    print(f"Response: {out['final']}")
+    print(f"Steps: {len(out['trace'])} | Tokens_In: {c['ti']} | Tokens_Out: {c['to']} | Duration: {c['s']:.3f}s")
+    print(f"Status: {'PASS' if ok else 'FAIL'} | Explanation: {reason}")
+    print("Call trace:")
     for t in out["trace"]: print("  " + t)
 
 @app.command()

@@ -15,18 +15,27 @@ class Agent:
 
     def run(self, task: str, token_budget: int = 400) -> dict:
         ctx = f"Task: {task}\nTools: " + " | ".join([f"{n}: {d}" for n, d in self.tools.spec()])
-        obs, trace, evidence, ti, to, t = "", [], {}, 0, 0, 0.0
+
+        # Initialize agent state
+        observation = ""
+        trace_log = []
+        evidence_dict = {}
+
+        # Initialize cost tracking
+        tokens_input = 0
+        tokens_output = 0
+        time_elapsed = 0.0
 
         for _ in range(self.max_steps):
-            prompt = f"{ctx}\nObservation: {obs}\nRespond: 'CALL: tool | arg' OR 'FINAL: answer'"
+            prompt = f"{ctx}\nObservation: {observation}\nRespond: 'CALL: tool | arg' OR 'FINAL: answer'"
             t0 = time.perf_counter()
             out = self.model.generate(prompt).strip()
             dt = time.perf_counter() - t0
-            ti += len(prompt.split()); to += len(out.split()); t += dt
-            trace.append(out)
+            tokens_input += len(prompt.split()); tokens_output += len(out.split()); time_elapsed += dt
+            trace_log.append(out)
 
             if out.startswith("FINAL:"):
-                return {"final": out[6:].strip(), "trace": trace, "cost": {"ti": ti, "to": to, "s": t}, "evidence": evidence}
+                return {"final": out[6:].strip(), "trace": trace_log, "cost": {"ti": tokens_input, "to": tokens_output, "s": time_elapsed}, "evidence": evidence_dict}
 
             if out.startswith("CALL:"):
                 try:
@@ -39,19 +48,19 @@ class Agent:
                     res = self.tools.get(tool_name)(arg)
                     
                     if tool_name == "calculator":
-                        evidence["calculator_result"] = res
+                        evidence_dict["calculator_result"] = res
 
                     if tool_name in {"calculator", "date_calc", "csv_query", "unit_convert"} and _is_numberish(res):
-                        trace.append(f"FINAL: {res.strip()}")
-                        return {"final": res.strip(), "trace": trace, "cost": {"ti": ti, "to": to, "s": t}, "evidence": evidence}
+                        trace_log.append(f"FINAL: {res.strip()}")
+                        return {"final": res.strip(), "trace": trace_log, "cost": {"ti": tokens_input, "to": tokens_output, "s": time_elapsed}, "evidence": evidence_dict}
 
-                    obs = f"Tool[{tool_name}] -> {res}"
+                    observation = f"Tool[{tool_name}] -> {res}"
                 except Exception as e:
-                    obs = f"error: {e}"
+                    observation = f"error: {e}"
             else:
-                obs = "error: expected 'CALL:' or 'FINAL:'"
+                observation = "error: expected 'CALL:' or 'FINAL:'"
 
-            if len(trace) >= self.max_steps or (ti + to) > int(token_budget * 1.1):
-                return {"final": obs, "trace": trace, "cost": {"ti": ti, "to": to, "s": t}, "evidence": evidence}
+            if len(trace_log) >= self.max_steps or (tokens_input + tokens_output) > int(token_budget * 1.1):
+                return {"final": observation, "trace": trace_log, "cost": {"ti": tokens_input, "to": tokens_output, "s": time_elapsed}, "evidence": evidence_dict}
 
-        return {"final": "error: max steps reached", "trace": trace, "cost": {"ti": ti, "to": to, "s": t}, "evidence": evidence}
+        return {"final": "error: max steps reached", "trace": trace_log, "cost": {"ti": tokens_input, "to": tokens_output, "s": time_elapsed}, "evidence": evidence_dict}
