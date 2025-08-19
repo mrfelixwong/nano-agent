@@ -8,20 +8,17 @@ app = typer.Typer(help="nano-agent")
 
 def build_agent(model_name: str = "llama3.1", max_steps: int = 4):
     tools = ToolRegistry()
-    register_default_tools(tools)   # calculator, unit_convert, date_calc, csv_query
+    register_default_tools(tools)
     return Agent(model=OllamaModel(model_name), tools=tools, max_steps=max_steps)
 
 @app.command()
-def run(task: str,
-        model: str = "llama3.1",
-        budget_tokens: int = 400,
-        max_steps: int = 4):
+def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
     ag = build_agent(model_name=model, max_steps=max_steps)
     out = ag.run(task, token_budget=budget_tokens)
     ok, reason = rule_judge(task, out["final"], out["evidence"])
     c = out["cost"]
     print(f"FINAL: {out['final']}")
-    print(f"STEPS: {len(out['trace'])} | TOKENS {c.tokens_in}/{c.tokens_out} | TIME {c.seconds:.3f}s")
+    print(f"STEPS: {len(out['trace'])} | TOKENS {c['ti']}/{c['to']} | TIME {c['s']:.3f}s")
     print(f"JUDGE: {'pass' if ok else 'fail'} ({reason})")
     print("TRACE:")
     for t in out["trace"]: print("  " + t)
