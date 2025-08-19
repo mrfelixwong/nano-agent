@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+nano_agent/__main__.py
+nano_agent/agent.py
+nano_agent/judge.py
+nano_agent/model_ollama.py
+nano_agent/tools.py
+nano_agent.egg-info/PKG-INFO
+nano_agent.egg-info/SOURCES.txt
+nano_agent.egg-info/dependency_links.txt
+nano_agent.egg-info/requires.txt
+nano_agent.egg-info/top_level.txt
