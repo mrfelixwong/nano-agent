@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
-import re, csv, pathlib
-from typing import Tuple, Dict, Callable, Optional
+import re
+from typing import Tuple, Dict, Callable
+
 
 class ToolRegistry:
-    """Registry for command-line tools with descriptions and functions."""
+    """Registry for agent tools."""
     
     def __init__(self):
         self._tools: Dict[str, Tuple[str, Callable]] = {}
     
     def register(self, name: str, desc: str, fn: Callable) -> None:
-        """Register a new tool with its description and function."""
+        """Register a tool with its description and function."""
         self._tools[name] = (desc, fn)
     
     def get(self, name: str) -> Callable:
@@ -19,7 +20,8 @@ class ToolRegistry:
     def spec(self) -> list[Tuple[str, str]]:
         """Get specifications of all registered tools."""
         return [(name, desc) for name, (desc, _) in self._tools.items()]
-        
+
+
 def _calc(arg: str) -> str:
     """Evaluate arithmetic expressions safely."""
     try:
@@ -28,12 +30,14 @@ def _calc(arg: str) -> str:
         
         if any(ch not in allowed_chars for ch in expr):
             return "error: only basic arithmetic allowed"
-            
+        
         return str(eval(expr, {"__builtins__": {}}, {}))
     except:
         return "error: invalid expression"
 
+
 def _unit_convert(arg: str) -> str:
+    """Convert between common units."""
     try:
         parts = arg.strip().lower().replace('°','').split()
         value, from_unit, _, to_unit = parts
@@ -48,77 +52,44 @@ def _unit_convert(arg: str) -> str:
             ('lb','kg'): lambda v: f"{v/2.20462:.3f} kg",
         }
         
-        # Check both short and long forms
         for key, convert_fn in conversions.items():
             if (from_unit, to_unit) == key:
                 return convert_fn(value)
-                
+        
         return "error: unsupported conversion"
     except:
-        return "error: '<value> <unit_from> to <unit_to>'"
-    
+        return "error: format: '<value> <from_unit> to <to_unit>'"
+
+
 def _date_calc(arg: str) -> str:
-    """Calculate date differences and perform date arithmetic.
-    
-    Supported formats:
-    - days_between 2025-01-01 2025-08-18  # number of days between dates
-    - 2025-01-01 + 7d                     # date after adding days
-    - 2025-01-01 - 7d                     # date before subtracting days
-    - 2025-01-01 to 2025-08-18           # alternative days between syntax
-    """
-    # Remove any quotes from the input
+    """Calculate date differences or arithmetic."""
     text = arg.strip().lower().replace("'", "").replace('"', "")
     
-    # Pattern definitions
-    DAYS_BETWEEN = r"days_between\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})"
-    DATE_ARITHMETIC = r"(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d"
-    DATE_RANGE = r"(\d{4}-\d{2}-\d{2})\s+(?:to|and|between)\s+(\d{4}-\d{2}-\d{2})"
-    DATE_PAIR = r"(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})"
-    
     try:
-        # Try each pattern
-        if match := re.match(DAYS_BETWEEN, text):
-            try:
-                date1 = datetime.fromisoformat(match.group(1))
-                date2 = datetime.fromisoformat(match.group(2))
-                days = (date2 - date1).days
-                return str(days)
-            except ValueError as e:
-                return f"error: invalid date format - {e}"
+        # Try "days_between DATE1 DATE2" or "DATE1 to DATE2" patterns
+        if 'days_between' in text or ' to ' in text or re.match(r'\d{4}-\d{2}-\d{2}\s+\d{4}-\d{2}-\d{2}', text):
+            # Extract two dates
+            dates = re.findall(r'\d{4}-\d{2}-\d{2}', text)
+            if len(dates) == 2:
+                date1 = datetime.fromisoformat(dates[0])
+                date2 = datetime.fromisoformat(dates[1])
+                return str((date2 - date1).days)
         
-        if match := re.match(DATE_ARITHMETIC, text):
-            try:
-                base_date = datetime.fromisoformat(match.group(1))
-                days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
-                result = base_date + timedelta(days=days)
-                return result.date().isoformat()
-            except ValueError as e:
-                return f"error: invalid date or number - {e}"
+        # Try "DATE +/- Nd" pattern
+        match = re.match(r'(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d', text)
+        if match:
+            base_date = datetime.fromisoformat(match.group(1))
+            days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
+            result = base_date + timedelta(days=days)
+            return result.date().isoformat()
         
-        if match := re.match(DATE_RANGE, text):
-            try:
-                date1 = datetime.fromisoformat(match.group(1))
-                date2 = datetime.fromisoformat(match.group(2))
-                days = (date2 - date1).days
-                return str(days)
-            except ValueError as e:
-                return f"error: invalid date format - {e}"
-        
-        if match := re.match(DATE_PAIR, text):
-            try:
-                date1 = datetime.fromisoformat(match.group(1))
-                date2 = datetime.fromisoformat(match.group(2))
-                days = (date2 - date1).days
-                return str(days)
-            except ValueError as e:
-                return f"error: invalid date format - {e}"
-        
-        return "error: Expected format: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'"
+        return "error: use 'days_between DATE1 DATE2' or 'DATE +/- Nd'"
     except Exception as e:
-        return f"error: date calculation failed - {e}"
+        return f"error: {e}"
+
 
 def register_default_tools(reg: ToolRegistry) -> None:
-    """Register all default tools to the registry."""
+    """Register all default tools."""
     reg.register("calculator", 
                 "Evaluate arithmetic like '2*(3+4)' or '3.03e12*(1+8.5/100)'.", 
                 _calc)
@@ -126,5 +97,5 @@ def register_default_tools(reg: ToolRegistry) -> None:
                 "Convert units (°F↔°C, km↔mi, kg↔lb). e.g. '72 F to C'.", 
                 _unit_convert)
     reg.register("date_calc", 
-                "Date math: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'.", 
+                "Date math: 'days_between DATE1 DATE2' or 'DATE +/- Nd'.", 
                 _date_calc)

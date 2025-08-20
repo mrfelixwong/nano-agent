@@ -5,10 +5,11 @@ from .model_ollama import OllamaModel
 from .tools import ToolRegistry, register_default_tools
 from .judge import llm_judge
 
-app = typer.Typer(help="nano-agent")
+app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
+
 
 def _display_agent_output(result: dict, passed: bool, reason: str):
-    """Prints the agent's results in a standardized, readable format."""
+    """Print agent results in readable format."""
     usage_stats = result["cost"]
     
     print("\n--- Agent Run Complete ---")
@@ -23,52 +24,56 @@ def _display_agent_output(result: dict, passed: bool, reason: str):
             data = json.loads(step_str)
             action = data.get("action")
             if action == "CALL":
-                tool = data.get('tool_name')
-                arg = data.get('argument')
-                print(f"  Thought: The next step is to use the '{tool}' tool.")
-                print(f"  Action: CALL: {tool} | {arg}")
+                print(f"  Thought: Use '{data.get('tool_name')}' tool")
+                print(f"  Action: CALL: {data.get('tool_name')} | {data.get('argument')}")
             elif action == "FINAL":
-                answer = data.get('answer')
-                print(f"  Thought: I have the final answer.")
-                print(f"  Action: FINAL: {answer}")
+                print(f"  Thought: Have final answer")
+                print(f"  Action: FINAL: {data.get('answer')}")
         except (json.JSONDecodeError, TypeError):
-            print(f"  - Raw Output: {step_str}")
+            print(f"  Raw: {step_str}")
 
-def build_agent(model_name: str = "llama3.1", max_steps: int = 4):
-    tools = ToolRegistry()
-    register_default_tools(tools)
-    return Agent(model=OllamaModel(model_name), tools=tools, max_steps=max_steps)
 
 @app.command()
 def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
-    """Runs the agent on a single task and prints the result."""
-    agent = build_agent(model_name=model, max_steps=max_steps)    
+    """Run agent on a single task."""
+    # Setup
+    tools = ToolRegistry()
+    register_default_tools(tools)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    
+    # Execute
     result = agent.run(task, token_budget=budget_tokens)
-    passed, reason = llm_judge(agent.model, task, result)    
+    passed, reason = llm_judge(agent.model, task, result)
     _display_agent_output(result, passed, reason)
+
 
 @app.command()
 def playground(model: str = "llama3.1", max_steps: int = 4):
-    """Starts an interactive session to experiment with the agent."""
+    """Interactive session to experiment with the agent."""
     print("Starting Nano-Agent Playground...")
     print('Type your task and press Enter. Type "quit" or "exit" to leave.')
     
-    agent = build_agent(model_name=model, max_steps=max_steps)
+    # Setup
+    tools = ToolRegistry()
+    register_default_tools(tools)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    
     while True:
         try:
             task = input(">> ")
             if task.lower() in ["quit", "exit"]:
                 print("Exiting playground.")
                 break
-
+            
             result = agent.run(task, token_budget=800)
             passed, reason = llm_judge(agent.model, task, result)
             _display_agent_output(result, passed, reason)
             print("-" * 25)
-
+            
         except (KeyboardInterrupt, EOFError):
             print("\nExiting playground.")
             break
+
 
 if __name__ == "__main__":
     app()
