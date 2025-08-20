@@ -1,14 +1,31 @@
 import typer
 import json
+from typing import Dict, Any, Tuple
 from .agent import Agent
 from .model_ollama import OllamaModel
 from .tools import ToolRegistry, register_default_tools
-from .judge import llm_judge
+from .judge import llm_judge, rule_judge
 
 app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
 
+def _get_judgment(agent: Agent, task: str, result: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Gets a judgment, using rule_judge first and falling back to llm_judge if
+    the rule-based check is inconclusive.
+    """
+    passed, reason = rule_judge(task, result["final"], result["trace"])
+    
+    # If the deterministic check failed specifically because it couldn't verify
+    # the tool, then we escalate to the LLM judge for a second opinion.
+    if not passed and "UNVERIFIED" in reason:
+        llm_passed, llm_reason = llm_judge(agent.model, task, result)
+        return llm_passed, f"[LLM Judge] {llm_reason}"
+    else:
+        # Otherwise, we trust the deterministic result (whether it's a PASS or a FAIL).
+        return passed, f"[Rule Judge] {reason}"
 
-def _display_agent_output(result: dict, passed: bool, reason: str):
+
+def _display_agent_output(result: dict, passed: bool, reason: str, judge_type: str = ""):
     """Print agent results in readable format."""
     usage_stats = result["cost"]
     
@@ -43,7 +60,7 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps:
     
     # Execute
     result = agent.run(task, token_budget=budget_tokens)
-    passed, reason = llm_judge(agent.model, task, result)
+    passed, reason = _get_judgment(agent, task, result)
     _display_agent_output(result, passed, reason)
 
 
@@ -65,8 +82,8 @@ def playground(model: str = "llama3.1", max_steps: int = 4):
                 print("Exiting playground.")
                 break
             
-            result = agent.run(task, token_budget=800)
-            passed, reason = llm_judge(agent.model, task, result)
+            result = agent.run(task, token_budget=800)            
+            passed, reason = _get_judgment(agent, task, result)
             _display_agent_output(result, passed, reason)
             print("-" * 25)
             

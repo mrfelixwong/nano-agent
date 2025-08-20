@@ -171,9 +171,79 @@ nano_agent/
 ├── agent.py          # Core agent loop with JSON parsing
 ├── model_ollama.py   # LLM interface with retry logic
 ├── tools.py          # Tool registry and implementations
-├── judge.py          # Evaluation system
-└── __main__.py       # CLI interface
+├── judge.py          # Two evaluation systems (rule & LLM)
+└── __main__.py       # CLI interface with judge comparison
 ```
+
+### Two Judge Types: Learning Evaluation Strategies
+
+nano-agent includes **two different judge implementations** to teach evaluation approaches:
+
+#### 1. Rule-Based Judge (Default)
+A deterministic judge that verifies answers by re-computing results:
+
+```bash
+python -m nano_agent run "Add 8.5% to 3.03e12" --judge rule
+```
+
+**How it works:**
+- Parses the agent's tool calls from the trace
+- Re-executes the computation locally
+- Compares expected vs actual mathematically
+
+**Pros:**
+- ✅ Fast and deterministic (no LLM calls)
+- ✅ Mathematically precise verification
+- ✅ Zero additional tokens/cost
+- ✅ Consistent results every time
+
+**Cons:**
+- ❌ Can only verify computational tasks
+- ❌ No semantic understanding
+- ❌ Limited to tools it knows how to verify
+
+#### 2. LLM Judge
+An AI judge that evaluates semantic correctness:
+
+```bash
+python -m nano_agent run "Convert 72F to celsius" --judge llm
+```
+
+**How it works:**
+- Sends the task, trace, and answer to an LLM
+- LLM evaluates if the agent solved the task correctly
+- Returns success/failure with reasoning
+
+**Pros:**
+- ✅ Understands context and intent
+- ✅ Works with any task type
+- ✅ Can evaluate partial success
+- ✅ Flexible reasoning
+
+**Cons:**
+- ❌ Slower (requires LLM call)
+- ❌ Uses additional tokens
+- ❌ May be inconsistent
+- ❌ Can be fooled by plausible-sounding errors
+
+#### Compare Both Judges
+
+Use the `compare` command to see how both judges evaluate the same task:
+
+```bash
+python -m nano_agent compare "What's 15% of 2500?"
+
+# Output shows both judgments:
+Rule Judge: ✅ PASS
+  Reason: PASS: Final answer 375.0 matches re-calculated value.
+
+LLM Judge:  ✅ PASS  
+  Reason: The agent correctly calculated 15% of 2500 as 375.
+
+# They might disagree on complex tasks!
+```
+
+This teaches an important lesson: **evaluation strategy matters** in production agents.
 
 ### Key Design Decisions
 
