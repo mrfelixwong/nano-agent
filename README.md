@@ -215,24 +215,7 @@ Every agent run tracks resource usage:
 - **Steps**: Number of reasoning iterations
 - **Cost**: $0.00 (everything runs locally!)
 
-## 🎓 Learning Path
-
-### Beginner
-1. Run the playground, try different tasks
-2. Read `agent.py` - understand the main loop
-3. Add print statements to see the flow
-
-### Intermediate
-1. Study `tools.py` - implement a custom tool
-2. Examine `judge.py` - understand evaluation
-3. Modify the agent's prompt template
-
-### Advanced
-1. Implement a new parsing strategy
-2. Add memory/context between runs
-3. Create multi-agent coordination
-
-## 🤔 Key Questions This Code Answers
+## Key Questions This Code Answers
 
 1. **Q: How do agents really work?**
    A: They're loops that repeatedly ask an LLM "what next?" until done.
@@ -249,51 +232,9 @@ Every agent run tracks resource usage:
 5. **Q: Why use local LLMs instead of GPT-4?**
    A: Free, private, no rate limits, and perfect for learning. The patterns you learn here work with any LLM.
 
-## 🐛 Common Issues
-
-| Problem | Solution |
-|---------|----------|
-| "Ollama not found" | Install with `brew install ollama` and run `ollama run llama3.1` |
-| "Connection refused" | Make sure Ollama is running: `ollama serve` in another terminal |
-| JSON parsing errors | The LLM might need warmup - try the task again |
-| Wrong calculations | Check if you're using the exact tool argument format |
-| Slow first run | Ollama loads the model into memory - subsequent runs are faster |
-
-## 📖 Further Learning
-
-After mastering nano-agent, explore:
-
-1. **LangChain/LangGraph**: Production agent frameworks
-2. **OpenAI Function Calling**: Cloud-based tool use patterns  
-3. **ReAct Pattern**: Reasoning + Acting methodology
-4. **Agent Evaluation**: HELM, BigBench, custom benchmarks
-5. **Multi-Agent Systems**: Coordination and communication
-
-## 🏗️ Exercises
-
-1. **Easy**: Add a `random_number` tool that generates random integers
-2. **Medium**: Implement agent memory that persists between runs
-3. **Hard**: Create a multi-step planner that decomposes complex tasks
-4. **Expert**: Build an agent that can debug its own errors
-
-## 💡 Design Philosophy
-
-This codebase prioritizes:
-- **Readability** over performance
-- **Explicit** over implicit behavior  
-- **Teaching** over feature completeness
-- **Local-first** over cloud dependencies
-- **Correctness** over optimization
-
-Every line of code is meant to be understood, not just executed.
-
-## 🤝 Contributing
+## Contributing
 
 Found a bug? Have an idea? We welcome contributions that maintain simplicity while teaching important concepts.
-
-## 📝 License
-
-Apache 2.0 - Use this code to learn, teach, and build.
 
 ---
 
