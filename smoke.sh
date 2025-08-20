@@ -24,7 +24,7 @@ grep -q "FINAL: 22.2" /tmp/nano_agent_last.out || fail "unit convert failed"
 echo "PASS: unit conversion test"
 
 # 3) date diff
-run "python -m nano_agent run 'days between 2025-01-01 2025-08-18'"
+run "python -m nano_agent run 'days_between 2025-01-01 2025-08-18'"
 grep -q "FINAL: 229" /tmp/nano_agent_last.out || fail "date calc failed"
 echo "PASS: date calculation test"
 

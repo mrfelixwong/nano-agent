@@ -1,20 +1,53 @@
-def _to_float(s: str):
-    try: return float(s.replace(',',''))
-    except: return None
+from typing import Optional, Tuple
 
-def rule_judge(task: str, final: str) -> tuple[bool, str]:
-    t, f = task.lower().strip(), final.strip()
+def _to_float(text: str) -> Optional[float]:
+    """Convert string to float, handling comma separators.
     
-    if 'add' in t and '%' in t and 'to' in t:
-        val = _to_float(f)
-        if val is None: return (False, 'final not numeric')
+    Args:
+        text: String to convert, may contain commas as thousands separators
+        
+    Returns:
+        Float value if conversion successful, None otherwise
+    """
+    try:
+        return float(text.replace(',', ''))
+    except (ValueError, AttributeError):
+        return None
+
+def rule_judge(task: str, final: str) -> Tuple[bool, str]:
+    """Judge if a task result meets expected criteria.
+    
+    Args:
+        task: Description of the task to perform
+        final: The final result/answer to validate
+        
+    Returns:
+        Tuple of (success: bool, reason: str)
+    """
+    task_lower = task.lower().strip()
+    result = final.strip()
+    
+    # Rule 1: Percentage addition tasks require numeric result
+    if 'add' in task_lower and '%' in task_lower and 'to' in task_lower:
+        value = _to_float(result)
+        if value is None:
+            return (False, 'final not numeric')
         return (True, 'numeric final')
     
-    if any(k in t for k in ['days_between', 'sum', 'avg', 'csv']):
-        return (_to_float(f) is not None, 'numeric' if _to_float(f) is not None else 'non-numeric')
+    # Rule 2: Calculation tasks require numeric result
+    calculation_keywords = ['days_between', 'sum', 'avg', 'csv']
+    if any(keyword in task_lower for keyword in calculation_keywords):
+        is_numeric = _to_float(result) is not None
+        reason = 'numeric' if is_numeric else 'non-numeric'
+        return (is_numeric, reason)
     
-    if 'convert' in t or ' to ' in t:
-        return (len(f) > 0, 'non-empty' if len(f) > 0 else 'empty')
+    # Rule 3: Conversion tasks just need non-empty result
+    if 'convert' in task_lower or ' to ' in task_lower:
+        is_valid = len(result) > 0
+        reason = 'non-empty' if is_valid else 'empty'
+        return (is_valid, reason)
     
-    return (len(f) > 0, 'non-empty' if len(f) > 0 else 'empty')
-
+    # Default rule: Any non-empty result is valid
+    is_valid = len(result) > 0
+    reason = 'non-empty' if is_valid else 'empty'
+    return (is_valid, reason)
