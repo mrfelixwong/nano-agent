@@ -58,6 +58,14 @@ def _unit_convert(arg: str) -> str:
         return "error: '<value> <unit_from> to <unit_to>'"
     
 def _date_calc(arg: str) -> str:
+    """Calculate date differences and perform date arithmetic.
+    
+    Supported formats:
+    - days_between 2025-01-01 2025-08-18  # number of days between dates
+    - 2025-01-01 + 7d                     # date after adding days
+    - 2025-01-01 - 7d                     # date before subtracting days
+    - 2025-01-01 to 2025-08-18           # alternative days between syntax
+    """
     text = arg.strip().lower()
     
     # Pattern definitions
@@ -66,29 +74,47 @@ def _date_calc(arg: str) -> str:
     DATE_RANGE = r"(\d{4}-\d{2}-\d{2})\s+(?:to|and|between)\s+(\d{4}-\d{2}-\d{2})"
     DATE_PAIR = r"(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})"
     
-    # Try each pattern
-    if match := re.match(DAYS_BETWEEN, text):
-        date1 = datetime.fromisoformat(match.group(1))
-        date2 = datetime.fromisoformat(match.group(2))
-        return str((date2 - date1).days)
-    
-    if match := re.match(DATE_ARITHMETIC, text):
-        base_date = datetime.fromisoformat(match.group(1))
-        days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
-        result = base_date + timedelta(days=days)
-        return result.date().isoformat()
-    
-    if match := re.match(DATE_RANGE, text):
-        date1 = datetime.fromisoformat(match.group(1))
-        date2 = datetime.fromisoformat(match.group(2))
-        return str((date2 - date1).days)
-    
-    if match := re.match(DATE_PAIR, text):
-        date1 = datetime.fromisoformat(match.group(1))
-        date2 = datetime.fromisoformat(match.group(2))
-        return str((date2 - date1).days)
-    
-    return "error: Expected format: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'"
+    try:
+        # Try each pattern
+        if match := re.match(DAYS_BETWEEN, text):
+            try:
+                date1 = datetime.fromisoformat(match.group(1))
+                date2 = datetime.fromisoformat(match.group(2))
+                days = (date2 - date1).days
+                return str(days)
+            except ValueError as e:
+                return f"error: invalid date format - {e}"
+        
+        if match := re.match(DATE_ARITHMETIC, text):
+            try:
+                base_date = datetime.fromisoformat(match.group(1))
+                days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
+                result = base_date + timedelta(days=days)
+                return result.date().isoformat()
+            except ValueError as e:
+                return f"error: invalid date or number - {e}"
+        
+        if match := re.match(DATE_RANGE, text):
+            try:
+                date1 = datetime.fromisoformat(match.group(1))
+                date2 = datetime.fromisoformat(match.group(2))
+                days = (date2 - date1).days
+                return str(days)
+            except ValueError as e:
+                return f"error: invalid date format - {e}"
+        
+        if match := re.match(DATE_PAIR, text):
+            try:
+                date1 = datetime.fromisoformat(match.group(1))
+                date2 = datetime.fromisoformat(match.group(2))
+                days = (date2 - date1).days
+                return str(days)
+            except ValueError as e:
+                return f"error: invalid date format - {e}"
+        
+        return "error: Expected format: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'"
+    except Exception as e:
+        return f"error: date calculation failed - {e}"
 
 def register_default_tools(reg: ToolRegistry) -> None:
     """Register all default tools to the registry."""

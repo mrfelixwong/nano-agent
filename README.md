@@ -1,10 +1,302 @@
-# nano-agent
-A tiny agent you can read in one sitting. Works locally with **Ollama**. Prints **traces**, a tiny **judge**, and **cost metrics**.
+# 🤖 nano-agent: Learn AI Agents in One Sitting
 
-## Quickstart
+A minimalist AI agent implementation designed to teach core agentic design patterns. Read the entire codebase in under 30 minutes and understand how AI agents really work.
+
+## 100% Local, Zero API Keys Required
+
+**Everything runs on your machine:**
+- No OpenAI API keys needed
+- No cloud services or accounts
+- No network calls (except downloading Ollama)
+- Your data never leaves your computer
+- Perfect for learning without costs or privacy concerns
+
+## What You'll Learn
+
+This repository teaches fundamental concepts of AI agents through clean, readable code:
+
+1. **The Agent Loop**: How agents observe, think, and act
+2. **Tool Use**: How agents extend their capabilities with external tools
+3. **Structured Output**: Reliable LLM-to-code communication via JSON
+4. **Cost Management**: Token budgets and execution limits
+5. **Evaluation**: How to judge if an agent succeeded
+6. **Tracing**: Debugging and understanding agent behavior
+
+## Quick Start
+
 ```bash
-brew install ollama
-ollama run llama3.1
+# 1. Install Ollama (local LLM runtime - one-time setup)
+brew install ollama        # macOS (or see ollama.ai for Linux/Windows)
+ollama run llama3.1        # Downloads ~5GB model, runs locally forever
+
+# 2. Install nano-agent
+git clone https://github.com/yourusername/nano-agent.git
+cd nano-agent
+pip install -e .
+
+# 3. Run your first agent task
 python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
-python -m nano_agent run "Convert 72 F to C"
-python -m nano_agent run "days_between 2025-01-01 2025-08-18"
+
+# 4. Start the interactive playground
+python -m nano_agent playground
+```
+
+**Note:** After initial setup, everything runs offline. No internet needed!
+
+## Using the Playground
+
+The playground is an interactive REPL for experimenting with the agent:
+
+```bash
+$ python -m nano_agent playground
+
+Starting Nano-Agent Playground...
+Type your task and press Enter. Type "quit" or "exit" to leave.
+
+>> Convert 100 fahrenheit to celsius
+
+--- Agent Run Complete ---
+Final Response: 37.8 °C
+Stats: Steps=1 | Tokens In=89 | Tokens Out=15 | Duration=1.234s
+Judgment: PASS | Agent correctly converted temperature
+
+--- Agent Trace ---
+Step 1:
+  Thought: The next step is to use the 'unit_convert' tool.
+  Action: CALL: unit_convert | 100 f to c
+-------------------------
+
+>> What's 15% of 2500?
+
+--- Agent Run Complete ---
+Final Response: 375.0
+Stats: Steps=1 | Tokens In=92 | Tokens Out=18 | Duration=0.987s
+Judgment: PASS | Agent calculated percentage correctly
+
+>> quit
+Exiting playground.
+```
+
+**Playground Features:**
+- **Interactive exploration**: Try any task instantly
+- **Live traces**: See the agent's thinking process
+- **Immediate feedback**: Judge evaluates each response
+- **No setup**: Just type and experiment
+- **Safe environment**: All computation is sandboxed
+
+**Example Tasks to Try:**
+```
+- "Calculate 18% tip on $47.50"
+- "How many days between Christmas and New Year's?"
+- "Convert 5 kilometers to miles"
+- "What's 2^10?"
+- "72 degrees fahrenheit in celsius"
+```
+
+## Core Concepts
+
+### 1. The Agent Loop (agent.py)
+
+The heart of any agent is its decision loop:
+
+```python
+for step in range(max_steps):
+    # 1. OBSERVE: What's the current situation?
+    prompt = f"{context}\nObservation: {observation}"
+    
+    # 2. THINK: What should I do next?
+    llm_output = model.generate(prompt, format='json')
+    
+    # 3. ACT: Execute the chosen action
+    if action == "CALL":
+        observation = execute_tool(tool_name, argument)
+    elif action == "FINAL":
+        return final_answer
+```
+
+**Key Lesson**: Agents are just loops that repeatedly ask "what next?" until they find an answer.
+
+### 2. Tool Use Pattern
+
+Tools give agents abilities beyond text generation:
+
+```python
+# Tools are just functions with descriptions
+def calculator(expr: str) -> str:
+    return str(eval(expr))  # Simplified for teaching
+
+registry.register("calculator", 
+                 "Evaluate arithmetic expressions", 
+                 calculator)
+```
+
+**Key Lesson**: Tools bridge the gap between language and computation.
+
+### 3. Structured Communication
+
+We use JSON to ensure reliable LLM-to-code communication:
+
+```json
+{"action": "CALL", "tool_name": "calculator", "argument": "3.03e12 * 1.085"}
+{"action": "FINAL", "answer": "3287550000000.0"}
+```
+
+**Key Lesson**: Structure prevents parsing ambiguity and improves reliability.
+
+### 4. Safety Mechanisms
+
+Real agents need guardrails:
+
+```python
+# Token budget prevents runaway costs
+if tokens_used > budget * 1.1:
+    return "error: token budget exceeded"
+
+# Step limit prevents infinite loops  
+if step >= max_steps:
+    return "error: max steps reached"
+```
+
+**Key Lesson**: Always implement safety limits in production agents.
+
+## Architecture Deep Dive
+
+### File Structure
+```
+nano_agent/
+├── agent.py          # Core agent loop with JSON parsing
+├── model_ollama.py   # LLM interface with retry logic
+├── tools.py          # Tool registry and implementations
+├── judge.py          # Evaluation system
+└── __main__.py       # CLI interface
+```
+
+### Key Design Decisions
+
+1. **JSON Over Text Parsing**: We chose JSON for reliability over simplicity
+   - Pro: No ambiguous parsing, structured data
+   - Con: More tokens, slightly harder to debug
+   - Learning: Production systems need reliability
+
+2. **Numerical Shortcuts**: Auto-return numbers from math tools
+   - Why: Saves an LLM call for simple numeric results
+   - Learning: Pragmatic optimizations improve efficiency
+
+3. **Tool Registry Pattern**: Extensible tool system
+   - Why: Easy to add new capabilities
+   - Learning: Good abstractions enable growth
+
+4. **Trace-Based Evaluation**: Judge examines the full execution
+   - Why: Correctness isn't just about the final answer
+   - Learning: Process matters as much as outcome
+
+##  Understanding Agent Behavior
+
+### Reading Traces
+
+Agent traces show the thinking process:
+
+```
+Step 1:
+  Thought: I need to calculate 8.5% of 3.03e12
+  Action: CALL: calculator | 3.03e12 * (1 + 8.5/100)
+  
+Step 2:  
+  Thought: I have the final answer
+  Action: FINAL: 3287550000000.0
+```
+
+### Cost Analysis
+
+Every agent run tracks resource usage:
+- **Tokens In**: Prompt tokens sent to LLM
+- **Tokens Out**: Response tokens from LLM  
+- **Duration**: Total execution time
+- **Steps**: Number of reasoning iterations
+- **Cost**: $0.00 (everything runs locally!)
+
+## 🎓 Learning Path
+
+### Beginner
+1. Run the playground, try different tasks
+2. Read `agent.py` - understand the main loop
+3. Add print statements to see the flow
+
+### Intermediate
+1. Study `tools.py` - implement a custom tool
+2. Examine `judge.py` - understand evaluation
+3. Modify the agent's prompt template
+
+### Advanced
+1. Implement a new parsing strategy
+2. Add memory/context between runs
+3. Create multi-agent coordination
+
+## 🤔 Key Questions This Code Answers
+
+1. **Q: How do agents really work?**
+   A: They're loops that repeatedly ask an LLM "what next?" until done.
+
+2. **Q: Why do agents need tools?**
+   A: LLMs can't do math, access data, or take actions - tools can.
+
+3. **Q: How do you prevent agent failures?**
+   A: Structured output (JSON), retry logic, safety limits, validation.
+
+4. **Q: What makes a good agent?**
+   A: Correct results + efficient process + reliable execution.
+
+5. **Q: Why use local LLMs instead of GPT-4?**
+   A: Free, private, no rate limits, and perfect for learning. The patterns you learn here work with any LLM.
+
+## 🐛 Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Ollama not found" | Install with `brew install ollama` and run `ollama run llama3.1` |
+| "Connection refused" | Make sure Ollama is running: `ollama serve` in another terminal |
+| JSON parsing errors | The LLM might need warmup - try the task again |
+| Wrong calculations | Check if you're using the exact tool argument format |
+| Slow first run | Ollama loads the model into memory - subsequent runs are faster |
+
+## 📖 Further Learning
+
+After mastering nano-agent, explore:
+
+1. **LangChain/LangGraph**: Production agent frameworks
+2. **OpenAI Function Calling**: Cloud-based tool use patterns  
+3. **ReAct Pattern**: Reasoning + Acting methodology
+4. **Agent Evaluation**: HELM, BigBench, custom benchmarks
+5. **Multi-Agent Systems**: Coordination and communication
+
+## 🏗️ Exercises
+
+1. **Easy**: Add a `random_number` tool that generates random integers
+2. **Medium**: Implement agent memory that persists between runs
+3. **Hard**: Create a multi-step planner that decomposes complex tasks
+4. **Expert**: Build an agent that can debug its own errors
+
+## 💡 Design Philosophy
+
+This codebase prioritizes:
+- **Readability** over performance
+- **Explicit** over implicit behavior  
+- **Teaching** over feature completeness
+- **Local-first** over cloud dependencies
+- **Correctness** over optimization
+
+Every line of code is meant to be understood, not just executed.
+
+## 🤝 Contributing
+
+Found a bug? Have an idea? We welcome contributions that maintain simplicity while teaching important concepts.
+
+## 📝 License
+
+Apache 2.0 - Use this code to learn, teach, and build.
+
+---
+
+*"The best way to understand agents is to build one from scratch."*
+
+**Ready to dive deeper?** Start with `agent.py` and follow the execution flow. In 30 minutes, you'll understand how AI agents really work.
