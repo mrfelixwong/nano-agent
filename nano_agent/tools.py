@@ -66,7 +66,8 @@ def _date_calc(arg: str) -> str:
     - 2025-01-01 - 7d                     # date before subtracting days
     - 2025-01-01 to 2025-08-18           # alternative days between syntax
     """
-    text = arg.strip().lower()
+    # Remove any quotes from the input
+    text = arg.strip().lower().replace("'", "").replace('"', "")
     
     # Pattern definitions
     DAYS_BETWEEN = r"days_between\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})"
