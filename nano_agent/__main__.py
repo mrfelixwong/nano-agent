@@ -15,7 +15,7 @@ def build_agent(model_name: str = "llama3.1", max_steps: int = 4):
 def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
     ag = build_agent(model_name=model, max_steps=max_steps)
     out = ag.run(task, token_budget=budget_tokens)
-    ok, reason = rule_judge(task, out["final"], out["evidence"])
+    ok, reason = rule_judge(task, out["final"])
     c = out["cost"]
     print(f"Response: {out['final']}")
     print(f"Steps: {len(out['trace'])} | Tokens_In: {c['ti']} | Tokens_Out: {c['to']} | Duration: {c['s']:.3f}s")

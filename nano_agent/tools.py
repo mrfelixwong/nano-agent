@@ -30,13 +30,28 @@ def _unit_convert(arg: str) -> str:
 
 def _date_calc(arg: str) -> str:
     s = arg.strip().lower()
+    
+    # Handle days_between format
     if m := re.match(r"days_between\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})", s):
         d1, d2 = datetime.fromisoformat(m.group(1)), datetime.fromisoformat(m.group(2))
         return str((d2-d1).days)
+    
+    # Handle date arithmetic format
     if m := re.match(r"(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d", s):
         d, sign, n = datetime.fromisoformat(m.group(1)), 1 if m.group(2)=='+' else -1, int(m.group(3))
         return (d + timedelta(days=sign*n)).date().isoformat()
-    return "error: 'days_between A B' or 'YYYY-MM-DD +/- Nd'"
+    
+    # Handle natural language format (e.g., "2025-01-01 to 2025-08-18")
+    if m := re.match(r"(\d{4}-\d{2}-\d{2})\s+(?:to|and|between)\s+(\d{4}-\d{2}-\d{2})", s):
+        d1, d2 = datetime.fromisoformat(m.group(1)), datetime.fromisoformat(m.group(2))
+        return str((d2-d1).days)
+    
+    # Handle simple date pair format (e.g., "2025-01-01 2025-08-18")
+    if m := re.match(r"(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})", s):
+        d1, d2 = datetime.fromisoformat(m.group(1)), datetime.fromisoformat(m.group(2))
+        return str((d2-d1).days)
+    
+    return "error: Expected format: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'"
 
 def _csv_query(arg: str) -> str:
     try:
@@ -65,6 +80,6 @@ def _csv_query(arg: str) -> str:
 def register_default_tools(reg: ToolRegistry):
     reg.register("calculator", "Evaluate arithmetic like '2*(3+4)' or '3.03e12*(1+8.5/100)'.", _calc)
     reg.register("unit_convert", "Convert units (°F↔°C, km↔mi, kg↔lb). e.g. '72 F to C'.", _unit_convert)
-    reg.register("date_calc", "Date math: 'days_between A B' or 'YYYY-MM-DD +/- Nd'.", _date_calc)
+    reg.register("date_calc", "Date math: 'days_between DATE1 DATE2', 'DATE1 +/- Nd', 'DATE1 to DATE2', or 'DATE1 DATE2'.", _date_calc)
     reg.register("csv_query", "CSV: 'sum file=... col=... [where=K:V]' or 'avg ...'", _csv_query)
 
