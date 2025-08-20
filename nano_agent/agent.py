@@ -56,6 +56,10 @@ Respond with ONLY a JSON object with the following schema:
         for step in range(self.max_steps):
             prompt = f"{context}\nObservation: {observation}"
             t0 = time.perf_counter()            
+
+            # WHY: We force the LLM to output JSON and use the Ollama 'format' parameter.
+            # This is a reliability pattern. It prevents the agent from crashing due
+            # to malformed LLM output and removes the need for brittle string parsing.
             llm_output = self.model.generate(prompt, format='json').strip()
             dt = time.perf_counter() - t0
             
@@ -78,6 +82,12 @@ Respond with ONLY a JSON object with the following schema:
                 
                 tool_result = observation.split("->", 1)[-1].strip()
                 is_numerical_tool = tool_name in NUMERICAL_TOOLS
+
+                # WHY: This is the "numerical shortcut," a pragmatic optimization.
+                # 1. Optimization: It saves a final, unnecessary LLM call just to
+                #    wrap a number in a FINAL tag, reducing cost and latency.
+                # 2. Guardrail: It provides a reliable, hard-coded rule for simple,
+                #    deterministic tasks, improving the agent's overall reliability.
                 if is_numerical_tool and self._is_numberish(tool_result):
                     final_answer = tool_result
                     trace_log.append(json.dumps({"action": "FINAL", "answer": final_answer}))
@@ -85,6 +95,8 @@ Respond with ONLY a JSON object with the following schema:
             else: # ERROR
                 observation = action_data.get("error", "Unknown error")
 
+            # WHY: Agents can sometimes get stuck in loops. These limits act as
+            # safety mechanisms to prevent runaway execution and costs.
             if (tokens_input + tokens_output) > int(token_budget * 1.1):
                 final_answer = "error: token budget exceeded"
                 break
