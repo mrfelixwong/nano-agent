@@ -11,13 +11,6 @@ class Agent:
         self.tools = tools
         self.max_steps = max_steps
 
-    def _parse_json_action(self, llm_output: str) -> Dict[str, str]:
-        """Parses the LLM's JSON output into a dictionary."""
-        try:
-            return json.loads(llm_output)
-        except json.JSONDecodeError:
-            return {"action": "ERROR", "error": "Invalid JSON output from LLM."}
-
     def _build_context(self, task: str) -> str:
         """Builds the initial context string with the task and tool specs."""
         tool_specs = [f"{name}: {desc}" for name, desc in self.tools.spec()]
@@ -65,7 +58,8 @@ Respond with ONLY a JSON object with the following schema:
             time_elapsed += dt
             trace_log.append(llm_output)
 
-            action_data = self._parse_json_action(llm_output)
+            # Parse LLM's JSON output or return error action if invalid
+            action_data = json.loads(llm_output) if llm_output else {"action": "ERROR", "error": "Empty output"}
             action = action_data.get("action")
 
             if action == "FINAL":
