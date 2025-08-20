@@ -1,6 +1,8 @@
 # 🤖 nano-agent: Learn AI Agents in One Sitting
 
-A minimalist AI agent implementation designed to teach core agentic design patterns. Read the entire codebase in under 30 minutes and understand how AI agents really work.
+**Zero frameworks. Pure Python. Built for learning.**
+
+A minimalist AI agent implementation that teaches core agentic patterns without LangChain, CrewAI, or any agent framework. Just 300 lines of readable Python you can understand in 30 minutes.
 
 ## 100% Local, Zero API Keys Required
 
@@ -11,16 +13,18 @@ A minimalist AI agent implementation designed to teach core agentic design patte
 - Your data never leaves your computer
 - Perfect for learning without costs or privacy concerns
 
-## What You'll Learn
+## Why nano-agent?
 
-This repository teaches fundamental concepts of AI agents through clean, readable code:
+**No Framework Magic** - While LangChain and others are powerful, their abstractions hide how agents actually work. This codebase shows you the raw mechanics.
 
-1. **The Agent Loop**: How agents observe, think, and act
-2. **Tool Use**: How agents extend their capabilities with external tools
-3. **Structured Output**: Reliable LLM-to-code communication via JSON
-4. **Cost Management**: Token budgets and execution limits
-5. **Evaluation**: How to judge if an agent succeeded
-6. **Tracing**: Debugging and understanding agent behavior
+**Optimized for Learning** - Every line is written to be understood.
+
+**Complete Implementation** - Despite being tiny, this is a fully functional agent with:
+- The observe → think → act loop
+- Tool calling with JSON structured output  
+- Token budget and safety limits
+- Execution tracing and evaluation
+- Interactive playground for experimentation
 
 ## Quick Start
 
