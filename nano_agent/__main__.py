@@ -51,12 +51,12 @@ def _display_agent_output(result: dict, passed: bool, reason: str, judge_type: s
 
 
 @app.command()
-def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
+def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4, verbose: bool = False):
     """Run agent on a single task."""
     # Setup
     tools = ToolRegistry()
     register_default_tools(tools)
-    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps, verbose=verbose)
     
     # Execute
     result = agent.run(task, token_budget=budget_tokens)
@@ -65,16 +65,18 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps:
 
 
 @app.command()
-def playground(model: str = "llama3.1", max_steps: int = 4):
+def playground(model: str = "llama3.1", max_steps: int = 4, verbose: bool = False):
     """Interactive session to experiment with the agent."""
     print("Starting Nano-Agent Playground...")
     print("Using hybrid judge (rule-based with LLM fallback)")
+    if verbose:
+        print("[VERBOSE MODE: Showing full LLM prompts and responses]")
     print('Type your task and press Enter. Type "quit" or "exit" to leave.')
     
     # Setup
     tools = ToolRegistry()
     register_default_tools(tools)
-    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps, verbose=verbose)
     
     while True:
         try:
@@ -94,7 +96,7 @@ def playground(model: str = "llama3.1", max_steps: int = 4):
 
 
 @app.command()
-def compare(task: str, model: str = "llama3.1", max_steps: int = 4):
+def compare(task: str, model: str = "llama3.1", max_steps: int = 4, verbose: bool = False):
     """
     Compare rule-based and LLM judges on the same task.
     
@@ -117,7 +119,7 @@ def compare(task: str, model: str = "llama3.1", max_steps: int = 4):
     # Setup
     tools = ToolRegistry()
     register_default_tools(tools)
-    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps, verbose=verbose)
     
     # Execute once
     print(f"\nTask: {task}")

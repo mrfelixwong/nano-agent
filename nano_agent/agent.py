@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, List, Any
 from .tools import ToolRegistry
 
@@ -6,10 +7,11 @@ from .tools import ToolRegistry
 class Agent:
     """Agent that uses LLM reasoning and tools to solve tasks."""
     
-    def __init__(self, model: Any, tools: ToolRegistry, max_steps: int = 4):
+    def __init__(self, model: Any, tools: ToolRegistry, max_steps: int = 4, verbose: bool = False):
         self.model = model
         self.tools = tools
         self.max_steps = max_steps
+        self.verbose = verbose or os.environ.get('NANO_AGENT_VERBOSE', '').lower() in ('1', 'true', 'yes')
     
     def _execute_tool(self, tool_name: str, arg: str) -> str:
         """Execute tool and return observation string."""
@@ -45,7 +47,23 @@ Respond with ONLY a JSON object:
             
             # OBSERVE + THINK: LLM decides next action
             prompt = f"{context}\nObservation: {observation}"
+            
+            # Verbose logging: show what we're sending to LLM
+            if self.verbose:
+                print(f"\n{'='*60}")
+                print(f"STEP {step + 1} - SENDING TO LLM:")
+                print(f"{'='*60}")
+                print(prompt)
+                print(f"{'='*60}")
+            
             plan_json = self.model.generate(prompt, format='json').strip()
+            
+            # Verbose logging: show what LLM responded
+            if self.verbose:
+                print(f"\nLLM RESPONSE:")
+                print(f"{'-'*60}")
+                print(plan_json)
+                print(f"{'-'*60}")
             
             # Track costs
             trace_log.append(plan_json)
