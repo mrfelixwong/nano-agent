@@ -2,20 +2,25 @@ import typer
 from .agent import Agent
 from .model_ollama import OllamaModel
 from .tools import ToolRegistry, register_default_tools
-from .judge import rule_judge
+from .judge import llm_judge, rule_judge
 
 app = typer.Typer(help="nano-agent")
 
 def build_agent(model_name: str = "llama3.1", max_steps: int = 4):
     tools = ToolRegistry()
     register_default_tools(tools)
-    return Agent(model=OllamaModel(model_name), tools=tools, max_steps=max_steps)
+    model = OllamaModel(model_name)
+    return Agent(model=model, tools=tools, max_steps=max_steps)
 
 @app.command()
 def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
     ag = build_agent(model_name=model, max_steps=max_steps)
     out = ag.run(task, token_budget=budget_tokens)
-    ok, reason = rule_judge(task, out["final"])
+    
+    # USE THE NEW LLM JUDGE
+    # Note: It needs the model instance, the task, and the full output dictionary
+    ok, reason = llm_judge(ag.model, task, out)
+    
     c = out["cost"]
     print(f"Response: {out['final']}")
     print(f"Steps: {len(out['trace'])} | Tokens_In: {c['ti']} | Tokens_Out: {c['to']} | Duration: {c['s']:.3f}s")

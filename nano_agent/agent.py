@@ -26,49 +26,21 @@ class Agent:
     
     @staticmethod
     def _is_numberish(s: str) -> bool:
-        """Check if a string represents a numeric value.
-        
-        Args:
-            s: String to check
-            
-        Returns:
-            bool: True if string represents an integer or float number
-        """
+        """Check if a string represents a numeric value."""
         return bool(re.match(r"\s*[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", s or ""))
         
     def __init__(self, model: Any, tools: ToolRegistry, max_steps: int = 4):
-        """Initialize the agent with a model and tools.
-        
-        Args:
-            model: Language model interface for generating responses
-            tools: Registry of available tools
-            max_steps: Maximum number of steps before terminating
-        """
         self.model = model
         self.tools = tools
         self.max_steps = max_steps
 
     def run(self, task: str, token_budget: int = 400) -> Dict[str, Any]:
-        """Run the agent on a task until completion or limits are reached.
-        
-        Args:
-            task: The task description to solve
-            token_budget: Maximum number of tokens to use
-            
-        Returns:
-            Dict containing final answer, execution trace, costs and evidence
-        """
-        # Build context with task and available tools
         ctx = f"Task: {task}\nTools: " + " | ".join([f"{n}: {d}" for n, d in self.tools.spec()])
-
-        # Initialize agent state
-        observation = ""  # Latest observation from tool execution
-        trace_log: List[str] = []  # Log of all actions taken
-
-        # Initialize cost tracking
-        tokens_input = 0  # Total input tokens used
-        tokens_output = 0  # Total output tokens generated  
-        time_elapsed = 0.0  # Total execution time
+        observation = ""
+        trace_log: List[str] = []
+        tokens_input = 0
+        tokens_output = 0
+        time_elapsed = 0.0
 
         for _ in range(self.max_steps):
             # Generate next action using the model
@@ -88,11 +60,18 @@ class Agent:
 
             if out.startswith("CALL:"):
                 try:
-                    # Parse tool name and arguments from model output
-                    tool_name, arg = out[5:].split("|", 1)
-                    tool_name, arg = tool_name.strip(), arg.strip()
+                    # More robust parsing for the 'CALL' command.
+                    # Handles cases with or without the '|' separator.
+                    call_content = out[5:].strip()
+                    parts = call_content.split("|", 1)
                     
-                    # Execute the tool
+                    if len(parts) == 2:
+                        tool_name, arg = parts[0].strip(), parts[1].strip()
+                    else:
+                        # Fallback for when the '|' is missing
+                        parts = call_content.split(None, 1)
+                        tool_name = parts[0]
+                        arg = parts[1] if len(parts) > 1 else ""
                     res = self.tools.get(tool_name)(arg)
 
                     # Check if we got a numerical result from a numerical tool

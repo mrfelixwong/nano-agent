@@ -1,7 +1,7 @@
 """Simple interface to Ollama API for generating agent responses."""
 
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # Model configuration
 DEFAULT_MODEL = "llama3.1"
@@ -19,7 +19,7 @@ class OllamaModel:
         self.model = model
         self.url = url
         
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, format: Optional[str] = None) -> str:
         """Generate a formatted response from the model.
         
         Returns a single line starting with either 'CALL:' or 'FINAL:'.
@@ -27,15 +27,16 @@ class OllamaModel:
         """
         request_data = {
             "model": self.model,
-            "prompt": f"{RESPONSE_FORMAT}\n\n{prompt}",
+            "prompt": f"{RESPONSE_FORMAT}\n\n{prompt}" if format is None else prompt,
             "stream": False
         }
         
-        # First attempt
+        if format:
+            request_data["format"] = format
+        
         response = self._make_request(request_data)
         
-        # Retry if format is wrong
-        if not (response.startswith("CALL:") or response.startswith("FINAL:")):
+        if format is None and not (response.startswith("CALL:") or response.startswith("FINAL:")):
             request_data["prompt"] += "\nRepeat in required format."
             response = self._make_request(request_data)
             
@@ -45,4 +46,3 @@ class OllamaModel:
         """Make API request and extract response text."""
         r = requests.post(self.url, json=data, timeout=REQUEST_TIMEOUT)
         return r.json().get("response", "").strip()
-
