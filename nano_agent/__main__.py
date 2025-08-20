@@ -1,4 +1,5 @@
 import typer
+import json
 from .agent import Agent
 from .model_ollama import OllamaModel
 from .tools import ToolRegistry, register_default_tools
@@ -14,19 +15,31 @@ def build_agent(model_name: str = "llama3.1", max_steps: int = 4):
 
 @app.command()
 def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4):
-    ag = build_agent(model_name=model, max_steps=max_steps)
-    out = ag.run(task, token_budget=budget_tokens)
+    agent = build_agent(model_name=model, max_steps=max_steps)
+    out = agent.run(task, token_budget=budget_tokens)
     
-    # USE THE NEW LLM JUDGE
-    # Note: It needs the model instance, the task, and the full output dictionary
-    ok, reason = llm_judge(ag.model, task, out)
+    ok, reason = llm_judge(agent.model, task, out)
     
     c = out["cost"]
     print(f"Response: {out['final']}")
     print(f"Steps: {len(out['trace'])} | Tokens_In: {c['ti']} | Tokens_Out: {c['to']} | Duration: {c['s']:.3f}s")
     print(f"Status: {'PASS' if ok else 'FAIL'} | Explanation: {reason}")
+    
     print("Call trace:")
-    for t in out["trace"]: print("  " + t)
+    for t in out["trace"]:
+        try:
+            data = json.loads(t)
+            action = data.get("action")
+            if action == "CALL":
+                print(f'  -> CALL: {data.get("tool_name")} | {data.get("argument")}')
+            elif action == "FINAL":
+                 print(f'  -> FINAL: {data.get("answer")}')
+            else:
+                # Fallback for other JSON structures
+                print(f"  -> {t}")
+        except json.JSONDecodeError:
+            # If it's not JSON, print it as-is (for old logs or errors)
+            print(f"  -> {t}")
 
 @app.command()
 def eval(model: str = "llama3.1"):

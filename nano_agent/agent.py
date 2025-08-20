@@ -2,6 +2,7 @@
 
 import time
 import re
+import json # Import the json library
 from typing import Dict, List, Any, Tuple, Optional
 from .tools import ToolRegistry
 
@@ -13,59 +14,49 @@ class Agent:
         self.tools = tools
         self.max_steps = max_steps
 
-    def _parse_action(self, llm_output: str) -> Tuple[str, Optional[str], Optional[str]]:
-        output = llm_output.strip()
-        if output.startswith("FINAL:"):
-            return "FINAL", None, output[6:].strip()
-        if output.startswith("CALL:"):
-            call_content = output[5:].strip()
-            parts = call_content.split("|", 1)
-            if len(parts) == 2:
-                tool_name, arg = parts[0].strip(), parts[1].strip()
-                return "CALL", tool_name, arg
-            parts = call_content.split(None, 1)
-            if len(parts) > 0:
-                tool_name = parts[0]
-                arg = parts[1] if len(parts) > 1 else ""
-                return "CALL", tool_name, arg
-        return "ERROR", None, "expected 'CALL:' or 'FINAL:'"
+    def _parse_json_action(self, llm_output: str) -> Dict[str, str]:
+        """Parses the LLM's JSON output into a dictionary."""
+        try:
+            return json.loads(llm_output)
+        except json.JSONDecodeError:
+            return {"action": "ERROR", "error": "Invalid JSON output from LLM."}
 
     def _build_context(self, task: str) -> str:
         """Builds the initial context string with the task and tool specs."""
-        
-        # Step 1: Format each tool's name and description into a list of strings.
         tool_specs = [f"{name}: {desc}" for name, desc in self.tools.spec()]
-        
-        # Step 2: Join the list of tool specs into a single string.
         tools_string = " | ".join(tool_specs)
         
-        # Step 3: Combine everything into the final context string.
-        context = f"Task: {task}\nTools: {tools_string}"
+        json_instructions = """
+Respond with ONLY a JSON object with the following schema:
+{
+  "action": "CALL" or "FINAL",
+  "tool_name": "name_of_tool_to_call" or null,
+  "argument": "argument_for_the_tool" or null,
+  "answer": "final_answer_to_the_user" or null
+}"""
         
+        context = f"Task: {task}\nTools: {tools_string}\n{json_instructions}"
         return context
 
     def _execute_tool(self, tool_name: str, arg: str) -> str:
         """Executes a tool and returns the resulting observation string."""
         try:
-            # This will now fail gracefully if the tool_name is wrong
             res = self.tools.get(tool_name)(arg)
             return f"Tool[{tool_name}] -> {res}"
         except Exception as e:
-            # FIX #1: Ensure this method ALWAYS returns a string
             return f"error: tool '{tool_name}' failed with {e}"
     
     def run(self, task: str, token_budget: int = 400) -> Dict[str, Any]:
-        # FIX #2: Use a colon ':' for a clearer prompt to prevent LLM confusion.
-        context = self._build_context(task)        
+        context = self._build_context(task)
         observation = ""
         trace_log: List[str] = []
         final_answer = ""
         tokens_input, tokens_output, time_elapsed = 0, 0, 0.0
 
         for step in range(self.max_steps):
-            prompt = f"{context}\nObservation: {observation}\nRespond: 'CALL: tool | arg' OR 'FINAL: answer'"
-            t0 = time.perf_counter()
-            llm_output = self.model.generate(prompt).strip()
+            prompt = f"{context}\nObservation: {observation}"
+            t0 = time.perf_counter()            
+            llm_output = self.model.generate(prompt, format='json').strip()
             dt = time.perf_counter() - t0
             
             tokens_input += len(prompt.split())
@@ -73,23 +64,26 @@ class Agent:
             time_elapsed += dt
             trace_log.append(llm_output)
 
-            action, tool_name, arg = self._parse_action(llm_output)
+            action_data = self._parse_json_action(llm_output)
+            action = action_data.get("action")
 
             if action == "FINAL":
-                final_answer = arg
+                final_answer = action_data.get("answer")
                 break
             
             if action == "CALL":
+                tool_name = action_data.get("tool_name")
+                arg = action_data.get("argument")
                 observation = self._execute_tool(tool_name, arg)
                 
                 tool_result = observation.split("->", 1)[-1].strip()
                 is_numerical_tool = tool_name in NUMERICAL_TOOLS
                 if is_numerical_tool and self._is_numberish(tool_result):
                     final_answer = tool_result
-                    trace_log.append(f"FINAL: {final_answer}")
+                    trace_log.append(json.dumps({"action": "FINAL", "answer": final_answer}))
                     break
             else: # ERROR
-                observation = arg
+                observation = action_data.get("error", "Unknown error")
 
             if (tokens_input + tokens_output) > int(token_budget * 1.1):
                 final_answer = "error: token budget exceeded"

@@ -1,5 +1,3 @@
-# judge.py
-
 import json
 from typing import Optional, Tuple, Dict, Any
 
