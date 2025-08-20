@@ -1,10 +1,11 @@
-# 🤖 nano-agent: Learn AI Agents in One Sitting
+# nano-agent: Learn AI Agents in One Sitting
+**Build an AI Agent *and* an AI Judge from scratch with no frameworks.**
 
 **Zero frameworks. Pure Python. Built for learning.**
 
-A minimalist AI agent implementation that teaches core agentic patterns without LangChain, CrewAI, or any agent framework. Just 300 lines of readable Python you can understand in 30 minutes.
+A minimalist AI agent implementation that teaches core agentic patterns without LangChain, CrewAI, or any agent framework. Just 300 lines of readable Python you can understand in one setting.
 
-## 100% Local, Zero API Keys Required
+## 100% Local, Zero API Keys Required, Data never leaves your computer
 
 **Everything runs on your machine:**
 - No OpenAI API keys needed
@@ -23,8 +24,11 @@ A minimalist AI agent implementation that teaches core agentic patterns without 
 - The observe → think → act loop
 - Tool calling with JSON structured output  
 - Token budget and safety limits
-- Execution tracing and evaluation
-- Interactive playground for experimentation
+- LLM-as-Judge: Using one AI to judge another's performance
+
+## A Key Concept: The AI Judge
+
+Beyond just making an agent, nano-agent teaches you how to evaluate it. It includes a powerful pattern called LLM-as-Judge, where you use a second AI to act as an impartial evaluator.
 
 ## Quick Start
 
@@ -41,11 +45,40 @@ pip install -e .
 # 3. Run your first agent task
 python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
 
-# 4. Start the interactive playground
+# 4. Compare how different judges evaluate the same task
+python -m nano_agent compare "Calculate 15% of 200"
+# Shows both rule-based (math verification) and LLM (semantic) evaluation
+
+# 5. Start the interactive playground
 python -m nano_agent playground
 ```
 
 **Note:** After initial setup, everything runs offline. No internet needed!
+
+## Learning from the Compare Command
+
+The `compare` command reveals how different evaluation strategies work:
+
+```bash
+$ python -m nano_agent compare "Calculate 2 * 50"
+
+Final Answer: 100
+Rule Judge: ✅ PASS - Final answer 100.0 matches re-calculated value.
+LLM Judge:  ✅ PASS - Agent correctly calculated the multiplication.
+
+# This might fail sometimes (LLMs are non-deterministic!)
+$ python -m nano_agent compare "What is 25% of 80?"
+
+Final Answer: 20.0  # Or sometimes: error: max steps reached
+Rule Judge: ✅ PASS  # Or: ❌ FAIL if agent struggled
+LLM Judge:  ✅ PASS  # Or: ❌ FAIL if agent struggled
+```
+
+**What This Teaches:**
+- **LLMs are non-deterministic** - Same prompt might succeed or fail
+- **Phrasing matters** - "Calculate X" more reliable than "What is X?"
+- **Both judges agree** - When agent succeeds/fails, both judges detect it
+- **Different perspectives** - Rule judge verifies math, LLM judge verifies intent
 
 ## Using the Playground
 
@@ -85,8 +118,6 @@ Exiting playground.
 - **Interactive exploration**: Try any task instantly
 - **Live traces**: See the agent's thinking process
 - **Immediate feedback**: Judge evaluates each response
-- **No setup**: Just type and experiment
-- **Safe environment**: All computation is sandboxed
 
 **Example Tasks to Try:**
 ```
@@ -245,6 +276,32 @@ LLM Judge:  ✅ PASS
 
 This teaches an important lesson: **evaluation strategy matters** in production agents.
 
+### Understanding Agent Failures (Educational!)
+
+Not all tasks succeed, and **that's by design**. Failures teach important lessons:
+
+```bash
+# This might succeed
+$ python -m nano_agent run "Calculate 15% of 200"
+Final Response: 30.0
+Judgment: PASS | [Rule Judge] PASS: Final answer 30.0 matches re-calculated value.
+
+# This might fail (depending on how the LLM interprets it)
+$ python -m nano_agent run "What is 25% of 80?"
+Final Response: error: max steps reached
+Judgment: FAIL | [Rule Judge] FAIL: Could not compare final answer...
+```
+
+**Why the difference?**
+- "Calculate X" → LLM likely outputs `0.15 * 200` 
+- "What is X?" → LLM might try `25% of 80` which isn't valid Python
+
+**Key Lessons:**
+1. **Prompt engineering matters** - How you phrase tasks affects success
+2. **Agents aren't magic** - They can fail on seemingly simple tasks
+3. **Step limits prevent infinite loops** - Better to fail fast than run forever
+4. **Different judges catch different failures** - Rule judge catches math errors, LLM judge catches semantic issues
+
 ### Key Design Decisions
 
 1. **JSON Over Text Parsing**: We chose JSON for reliability over simplicity
@@ -289,6 +346,108 @@ Every agent run tracks resource usage:
 - **Steps**: Number of reasoning iterations
 - **Cost**: $0.00 (everything runs locally!)
 
+## Debugging Agent Failures
+
+When an agent fails, the trace tells you exactly what went wrong:
+
+```bash
+$ python -m nano_agent run "What is 25% of 80?" --max-steps 6
+
+--- Agent Trace ---
+Step 1:
+  Action: CALL: calculator | 25% of 80     # ❌ Invalid Python expression
+Step 2:
+  Action: CALL: calculator | 0.25 * 80     # ✅ Retry with valid expression  
+Step 3:
+  Action: FINAL: 20.0                      # ✅ Success!
+```
+
+**Common Failure Patterns:**
+1. **Invalid tool arguments** - Agent passes natural language instead of code
+2. **Max steps reached** - Agent keeps retrying without success
+3. **Wrong tool selection** - Agent uses calculator for date problems
+4. **Token budget exceeded** - Task too complex for budget
+
+**How to Debug:**
+- Check the trace to see what tools were called
+- Look at tool arguments - are they valid?
+- Count steps - did it hit the limit?
+- Compare judges - do they agree on the failure?
+
+## Code Walkthrough: Follow a Task End-to-End
+
+Let's trace `"Calculate 2 * 50"` through the entire system:
+
+### 1. CLI Entry (`__main__.py:54`)
+```python
+def run(task: str, ...):
+    agent = Agent(model=OllamaModel(), tools=tools)
+    result = agent.run(task)
+```
+
+### 2. Agent Loop (`agent.py:44-77`)
+```python
+# Step 1: Build context with task and available tools
+context = "Task: Calculate 2 * 50\nTools: calculator | unit_convert | date_calc"
+
+# Step 2: LLM decides first action
+plan = {"action": "CALL", "tool_name": "calculator", "argument": "2 * 50"}
+
+# Step 3: Execute tool
+observation = "Tool 'calculator' succeeded with result: 100"
+
+# Step 4: LLM sees result and decides to finish
+plan = {"action": "FINAL", "answer": "100"}
+```
+
+### 3. Hybrid Judge Evaluation (`__main__.py:11-25`)
+```python
+# First try rule-based judge
+rule_judge: "2 * 50" = 100 ✓  # Math verified!
+
+# Since rule judge passed, no need for LLM judge
+return (True, "[Rule Judge] PASS: Final answer 100 matches...")
+```
+
+**Total lines to understand: ~270** - Truly readable in one sitting!
+
+## Try These Experiments
+
+### 1. Watch Non-Determinism in Action
+```bash
+# Run the same task multiple times
+for i in {1..5}; do 
+    python -m nano_agent run "What is 15% of 200?"
+done
+# Notice: Sometimes it succeeds, sometimes it fails!
+```
+
+### 2. Test the Safety Limits
+```bash
+# Hit the step limit
+python -m nano_agent run "Count to 100" --max-steps 2
+# Result: error: max steps reached
+
+# Hit the token budget  
+python -m nano_agent run "Explain quantum physics" --budget-tokens 50
+# Result: error: token budget exceeded
+```
+
+### 3. Compare Judge Disagreements
+```bash
+# Find tasks where judges might disagree
+python -m nano_agent compare "What day is tomorrow?"
+# Rule judge: Can't verify without knowing today's date
+# LLM judge: Might evaluate based on attempt quality
+```
+
+### 4. Debug a Failure
+```bash
+# Watch the agent struggle and learn why
+python -m nano_agent run "What's 25% of 80?" --max-steps 6
+# Check the trace - does it try invalid expressions?
+```
+
 ## Key Questions This Code Answers
 
 1. **Q: How do agents really work?**
@@ -297,14 +456,61 @@ Every agent run tracks resource usage:
 2. **Q: Why do agents need tools?**
    A: LLMs can't do math, access data, or take actions - tools can.
 
-3. **Q: How do you prevent agent failures?**
-   A: Structured output (JSON), retry logic, safety limits, validation.
+3. **Q: How should we evaluate agents?**
+   A: Use hybrid approach - deterministic checks when possible, AI evaluation when needed.
 
-4. **Q: What makes a good agent?**
-   A: Correct results + efficient process + reliable execution.
+4. **Q: Why do agents fail on simple tasks?**
+   A: LLMs are probabilistic - phrasing, context, and randomness all affect outcomes.
 
-5. **Q: Why use local LLMs instead of GPT-4?**
-   A: Free, private, no rate limits, and perfect for learning. The patterns you learn here work with any LLM.
+5. **Q: How do you prevent runaway agents?**
+   A: Step limits (prevent infinite loops) + token budgets (control costs).
+
+6. **Q: What's LLM-as-Judge?**
+   A: Using one AI to evaluate another - powerful but imperfect pattern.
+
+7. **Q: Why not use LangChain/CrewAI/etc?**
+   A: Frameworks hide the mechanics. Here you see exactly how agents work - no magic.
+
+## What You'll Learn by Reading This Code
+
+After studying nano-agent, you'll understand:
+
+### Core Agent Concepts
+- **The agent loop**: How observe → think → act actually works in code
+- **Tool calling**: How LLMs invoke external functions safely
+- **Structured output**: Why JSON beats free-text for LLM-to-code communication
+- **Context management**: How agents maintain state across steps
+
+### Production Patterns
+- **Hybrid evaluation**: Combining fast deterministic checks with flexible AI judgment
+- **Safety limits**: Token budgets and step limits to prevent runaway agents
+- **Error handling**: Graceful degradation when tools fail or LLMs misbehave
+- **Tracing**: Building interpretable logs for debugging
+
+### Real-World Insights
+- **LLMs are non-deterministic**: Same prompt, different results
+- **Prompt sensitivity**: "Calculate X" vs "What is X?" can determine success
+- **Evaluation is hard**: No single judge is perfect
+- **Failures are educational**: They reveal system boundaries
+
+### Engineering Lessons
+- **Simplicity wins**: 270 lines does what frameworks do in thousands
+- **Local-first development**: No API keys, no costs, full control
+- **Clear abstractions**: Agent, Model, Tools, Judge - each with one job
+- **Educational code**: Optimized for understanding, not production
+
+## Advanced Topics to Explore
+
+Once you understand the basics, try extending nano-agent:
+
+1. **Add new tools**: Weather API, web search, file operations
+2. **Implement memory**: Store conversation history between runs
+3. **Create custom judges**: Fact-checking, safety validation, output formatting
+4. **Add streaming**: Show agent thinking in real-time
+5. **Build agent chains**: Multiple agents working together
+6. **Add vision support**: Process images with multimodal models
+
+The clean architecture makes these extensions straightforward!
 
 ## Contributing
 

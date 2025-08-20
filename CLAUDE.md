@@ -13,14 +13,8 @@ nano-agent is a minimalist AI agent implementation for educational purposes. It 
 # Run single task
 python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
 
-# Run evaluation suite (3 core test cases)
-python -m nano_agent eval
-
 # Run smoke tests (requires Ollama with llama3.1)
 ./smoke.sh
-
-# Test prompt variations
-python -m nano_agent probe
 ```
 
 ### Installation
@@ -41,15 +35,14 @@ The agent follows an observe-plan-act loop with these core components:
 
 2. **Model Interface** (`nano_agent/model_ollama.py`): Ollama wrapper enforcing structured responses (`CALL: tool | arg` or `FINAL: answer`). Includes retry logic for malformed responses.
 
-3. **Tools** (`nano_agent/tools.py`): Extensible registry with 4 built-in tools:
+3. **Tools** (`nano_agent/tools.py`): Extensible registry with 3 built-in tools:
    - `calculator`: Safe arithmetic evaluation
    - `unit_convert`: Temperature/distance/weight conversions
    - `date_calc`: Date arithmetic operations
-   - `csv_query`: CSV data analysis (sum/average with filtering)
 
 4. **Judge** (`nano_agent/judge.py`): Rule-based validation for task completion, particularly for percentage, calculation, and conversion tasks.
 
-5. **CLI** (`nano_agent/__main__.py`): Typer-based interface with `run`, `eval`, and `probe` commands.
+5. **CLI** (`nano_agent/__main__.py`): Typer-based interface with `run`, `playground`, and `compare` commands.
 
 ## Testing Strategy
 

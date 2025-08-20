@@ -28,4 +28,18 @@ run "python -m nano_agent run 'days_between 2025-01-01 2025-08-18'"
 grep -q "Response: 229" /tmp/nano_agent_last.out || fail "date calc failed"
 echo "PASS: date calculation test"
 
+# 4) judge comparison - success case
+run "python -m nano_agent compare 'Calculate 2 * 50'"
+grep -q "Rule Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no rule judge"
+grep -q "LLM Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no llm judge"
+grep -q "Final Answer: 100" /tmp/nano_agent_last.out || fail "compare command failed - wrong answer"
+echo "PASS: judge comparison test (success case)"
+
+# 5) judge comparison - failure case (educational - agent may struggle with natural language)
+run "python -m nano_agent compare 'What is 25% of 80?'"
+grep -q "Rule Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no rule judge"
+grep -q "LLM Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no llm judge"
+# Note: This may fail with "max steps reached" - that's educational!
+echo "PASS: judge comparison test (demonstrates agent limitations)"
+
 echo "ALL SMOKE TESTS PASSED"

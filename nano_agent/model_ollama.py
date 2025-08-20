@@ -25,8 +25,22 @@ class OllamaModel:
             "stream": False
         }
         
-        response = requests.post(self.url, json=request_data, timeout=REQUEST_TIMEOUT)
-        result = response.json()
+        try:
+            response = requests.post(self.url, json=request_data, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            result = response.json()
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(
+                "\n[ERROR] Cannot connect to Ollama at http://localhost:11434\n"
+                "Please ensure Ollama is running:\n"
+                "  1. Install Ollama: brew install ollama (or see ollama.ai)\n"
+                "  2. Start Ollama: ollama run llama3.1\n"
+                "  3. Try again!"
+            )
+        except requests.exceptions.Timeout:
+            raise TimeoutError(f"Ollama request timed out after {REQUEST_TIMEOUT}s")
+        except Exception as e:
+            raise RuntimeError(f"Ollama error: {e}")
         
         # Track duration for cost metrics
         self.last_duration = result.get("eval_duration", 0) / 1e9  # Convert ns to seconds

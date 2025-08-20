@@ -53,33 +53,9 @@ def rule_judge(task: str, final_answer: str, trace: List[str]) -> Tuple[bool, st
         except (ValueError, TypeError):
             return False, f"FAIL: Could not compare final answer '{final_answer}' with expected number."
     
-    elif tool_name == "unit_convert":
-        # Basic verification: check if answer contains expected unit
-        arg_lower = argument.lower() if argument else ""
-        answer_lower = final_answer.lower()
-        
-        if 'to c' in arg_lower and '°c' in answer_lower:
-            return True, "PASS: Temperature conversion to Celsius verified."
-        elif 'to f' in arg_lower and '°f' in answer_lower:
-            return True, "PASS: Temperature conversion to Fahrenheit verified."
-        elif 'to km' in arg_lower and 'km' in answer_lower:
-            return True, "PASS: Distance conversion to km verified."
-        elif 'to mi' in arg_lower and 'mi' in answer_lower:
-            return True, "PASS: Distance conversion to miles verified."
-        else:
-            return True, f"PASS: Unit conversion for '{tool_name}' completed."
-    
-    elif tool_name == "date_calc":
-        # Basic verification: check if answer is numeric for days_between
-        if 'days_between' in argument.lower():
-            try:
-                int(final_answer)
-                return True, f"PASS: Date difference calculated: {final_answer} days."
-            except ValueError:
-                return False, f"FAIL: Expected numeric days, got '{final_answer}'."
-        else:
-            return True, f"PASS: Date calculation completed."
-    
+    # For complex tools like unit_converter and date_calculator, we rely on the LLM judge
+    # since rule-based verification would require extensive parsing and domain knowledge.
+    # This ensures flexibility while maintaining verification capabilities.
     # Default for unknown tools
     return False, f"UNVERIFIED: Rule judge cannot verify tool '{tool_name}'."
 

@@ -68,6 +68,7 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps:
 def playground(model: str = "llama3.1", max_steps: int = 4):
     """Interactive session to experiment with the agent."""
     print("Starting Nano-Agent Playground...")
+    print("Using hybrid judge (rule-based with LLM fallback)")
     print('Type your task and press Enter. Type "quit" or "exit" to leave.')
     
     # Setup
@@ -90,6 +91,54 @@ def playground(model: str = "llama3.1", max_steps: int = 4):
         except (KeyboardInterrupt, EOFError):
             print("\nExiting playground.")
             break
+
+
+@app.command()
+def compare(task: str, model: str = "llama3.1", max_steps: int = 4):
+    """
+    Compare rule-based and LLM judges on the same task.
+    
+    Educational tool that runs a task once and evaluates it with both judge types,
+    highlighting their different approaches and trade-offs.
+    
+    Args:
+        task: The task for the agent to perform
+        model: Ollama model to use (default: llama3.1)
+        max_steps: Maximum reasoning steps allowed (default: 4)
+    
+    Example:
+        python -m nano_agent compare "What's 15% of 2500?"
+        
+    This will show:
+        - Rule Judge: Deterministic verification by re-computing the math
+        - LLM Judge: Semantic evaluation of the task completion
+        - Whether the judges agree (they usually do for math, may differ for complex tasks)
+    """
+    # Setup
+    tools = ToolRegistry()
+    register_default_tools(tools)
+    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps)
+    
+    # Execute once
+    print(f"\nTask: {task}")
+    print("=" * 50)
+    result = agent.run(task, token_budget=400)
+    
+    # Judge with both methods
+    rule_passed, rule_reason = rule_judge(task, result["final"], result["trace"])
+    llm_passed, llm_reason = llm_judge(agent.model, task, result)
+    
+    # Display comparison
+    print(f"\nFinal Answer: {result['final']}")
+    print(f"Steps Taken: {len(result['trace'])}")
+    print("\n--- Judge Comparison ---")
+    print(f"Rule Judge: {'[PASS]' if rule_passed else '[FAIL]'}")
+    print(f"  Reason: {rule_reason}")
+    print(f"\nLLM Judge:  {'[PASS]' if llm_passed else '[FAIL]'}")
+    print(f"  Reason: {llm_reason}")
+    
+    if rule_passed != llm_passed:
+        print("\n[WARNING] Judges disagree! This highlights their different approaches.")
 
 
 if __name__ == "__main__":
