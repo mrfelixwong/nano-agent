@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🔎 nano-agent smoke tests (expects Ollama running llama3.1)"
+echo "nano-agent smoke tests"
 echo
 
 run() {
