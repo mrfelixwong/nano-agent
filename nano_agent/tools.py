@@ -66,14 +66,25 @@ def _date_calc(arg: str) -> str:
     text = arg.strip().lower().replace("'", "").replace('"', "")
     
     try:
-        # Try "days_between DATE1 DATE2" or "DATE1 to DATE2" patterns
-        if 'days_between' in text or ' to ' in text or re.match(r'\d{4}-\d{2}-\d{2}\s+\d{4}-\d{2}-\d{2}', text):
-            # Extract two dates
-            dates = re.findall(r'\d{4}-\d{2}-\d{2}', text)
-            if len(dates) == 2:
-                date1 = datetime.fromisoformat(dates[0])
-                date2 = datetime.fromisoformat(dates[1])
-                return str((date2 - date1).days)
+        # Simple approach: Find date patterns directly
+        if 'days_between' in text:
+            dates_found = []
+            
+            # Pattern 1: ISO format YYYY-MM-DD
+            iso_dates = re.findall(r'\d{4}-\d{2}-\d{2}', text)
+            for date_str in iso_dates:
+                dates_found.append(datetime.fromisoformat(date_str))
+            
+            # Pattern 2: "Month DD YYYY" like "Jan 1 2024" or "January 1 2024"
+            month_dates = re.findall(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\s+(\d{4})', text)
+            month_map = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
+            for month_str, day, year in month_dates:
+                month = month_map[month_str[:3]]
+                dates_found.append(datetime(int(year), month, int(day)))
+            
+            if len(dates_found) >= 2:
+                return str(abs((dates_found[1] - dates_found[0]).days))
         
         # Try "DATE +/- Nd" pattern
         match = re.match(r'(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d', text)
@@ -120,13 +131,13 @@ def _write_file(arg: str) -> str:
 def register_default_tools(reg: ToolRegistry) -> None:
     """Register all default tools."""
     reg.register("calculator", 
-                "Evaluate arithmetic like '2*(3+4)' or '3.03e12*(1+8.5/100)'.", 
+                "Use for ALL math: multiply, divide, add, subtract, percentages. Examples: '74*2', '3.03e12*(1+8.5/100)' for adding 8.5%, '200*0.15' for 15% of 200.", 
                 _calc)
     reg.register("unit_convert", 
-                "Convert units (°F↔°C, km↔mi, kg↔lb). e.g. '72 F to C'.", 
+                "Convert temperature/distance/weight units ONLY. Examples: '72 F to C', '10 km to mi'. NEVER use for multiplication or arithmetic.", 
                 _unit_convert)
     reg.register("date_calc", 
-                "Date math: 'days_between DATE1 DATE2' or 'DATE +/- Nd'.", 
+                "Calculate days between dates or add/subtract days from dates ONLY. Examples: 'days_between 2024-01-01 2024-03-15'. NEVER use for multiplying numbers.", 
                 _date_calc)
     reg.register("write_file",
                 "Write to file: 'filename.txt: content'. Files saved to /tmp/.",

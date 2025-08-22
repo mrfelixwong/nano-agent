@@ -114,7 +114,7 @@ def _display_agent_output(result: dict, passed: bool, reason: str, judge_type: s
 
 
 @app.command()
-def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps: int = 4, verbose: bool = False, trace_format: str = "compact"):
+def run(task: str, model: str = "llama3.1", budget_tokens: int = 1200, max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """Run agent on a single task.
     
     Args:
@@ -137,7 +137,7 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 400, max_steps:
 
 
 @app.command()
-def playground(model: str = "llama3.1", max_steps: int = 4, verbose: bool = False, trace_format: str = "compact"):
+def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """Interactive session to experiment with the agent.
     
     Args:
@@ -165,7 +165,7 @@ def playground(model: str = "llama3.1", max_steps: int = 4, verbose: bool = Fals
                 print("Exiting playground.")
                 break
             
-            result = agent.run(task, token_budget=800)            
+            result = agent.run(task, token_budget=1200)            
             passed, reason = _get_judgment(agent, task, result)
             _display_agent_output(result, passed, reason, trace_format=trace_format, verbose=verbose)
             print("-" * 25)
@@ -176,7 +176,7 @@ def playground(model: str = "llama3.1", max_steps: int = 4, verbose: bool = Fals
 
 
 @app.command()
-def compare(task: str, model: str = "llama3.1", max_steps: int = 4, verbose: bool = False, trace_format: str = "compact"):
+def compare(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """
     Compare rule-based and LLM judges on the same task.
     
@@ -211,7 +211,7 @@ def compare(task: str, model: str = "llama3.1", max_steps: int = 4, verbose: boo
     # Execute once
     print(f"\nTask: {task}")
     print("=" * 50)
-    result = agent.run(task, token_budget=400)
+    result = agent.run(task, token_budget=1200)
     
     # Show execution trace if requested
     if trace_format != "none":
@@ -268,7 +268,7 @@ def eval(model: str = "llama3.1", max_steps: int = 4):
         print(f"\nTest: {task}")
         print(f"Expected: {expected}")
         
-        result = agent.run(task, token_budget=400)
+        result = agent.run(task, token_budget=1200)
         actual = result["final"]
         
         # Check if answer contains expected value (flexible matching)
@@ -327,7 +327,7 @@ def probe(prompt_template: str = "Calculate {}", value: str = "15% of 200", mode
     results = []
     for prompt in prompts:
         print(f"\nPrompt: '{prompt}'")
-        result = agent.run(prompt, token_budget=400)
+        result = agent.run(prompt, token_budget=1200)
         answer = result["final"]
         steps = len(result["trace"])
         

@@ -205,7 +205,7 @@ if step >= max_steps:
 ### File Structure
 ```
 nano_agent/
-├── agent.py          # Core agent loop with JSON parsing
+├── agent.py          # Core agent loop with planning & JSON parsing
 ├── model_ollama.py   # LLM interface with retry logic
 ├── tools.py          # Tool registry (calculator, converter, date, file writer)
 ├── judge.py          # Two evaluation systems (rule & LLM)
@@ -227,6 +227,26 @@ Agents work in a two-phase cycle that separates **thinking** from **doing**:
    - Returns results as the next observation
 
 This separation is crucial: the LLM **decides**, Python **executes**.
+
+### Planning: How Agents Handle Multi-Step Tasks
+
+The agent supports **planning** for complex multi-step tasks:
+
+1. **Plan Creation**: When detecting a multi-step task, the agent first creates a plan
+2. **Step Execution**: Executes each step sequentially using appropriate tools
+3. **Context Passing**: Results from one step are passed to the next
+
+**Example - Multi-Step Success:**
+```bash
+Task: "Calculate days between 2024-01-01 and 2024-03-15, then multiply by 2"
+
+[Step 1] PLAN: ["Calculate days", "Multiply result by 2"]
+[Step 2] CALL: date_calc("days_between 2024-01-01 2024-03-15") → 74
+[Step 3] CALL: calculator("74 * 2") → 148
+[Step 4] FINAL: 148 ✓
+```
+
+This solves the previous limitation where agents would get stuck repeating the same tool on multi-step tasks!
 
 ### Trace Output Formats
 
