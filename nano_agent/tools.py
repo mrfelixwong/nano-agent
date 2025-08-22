@@ -88,6 +88,35 @@ def _date_calc(arg: str) -> str:
         return f"error: {e}"
 
 
+def _write_file(arg: str) -> str:
+    """Write content to a file in /tmp directory for safety."""
+    try:
+        # Parse argument: "filename.txt: content to write"
+        if ':' not in arg:
+            return "error: format should be 'filename: content'"
+        
+        filename, content = arg.split(':', 1)
+        filename = filename.strip()
+        content = content.strip()
+        
+        # Safety: only allow writing to /tmp directory
+        if not filename:
+            return "error: no filename provided"
+        
+        # Remove any path components for safety
+        import os
+        filename = os.path.basename(filename)
+        filepath = f"/tmp/{filename}"
+        
+        # Write the file
+        with open(filepath, 'w') as f:
+            f.write(content)
+        
+        return f"File written to {filepath}"
+    except Exception as e:
+        return f"error: {e}"
+
+
 def register_default_tools(reg: ToolRegistry) -> None:
     """Register all default tools."""
     reg.register("calculator", 
@@ -99,3 +128,6 @@ def register_default_tools(reg: ToolRegistry) -> None:
     reg.register("date_calc", 
                 "Date math: 'days_between DATE1 DATE2' or 'DATE +/- Nd'.", 
                 _date_calc)
+    reg.register("write_file",
+                "Write to file: 'filename.txt: content'. Files saved to /tmp/.",
+                _write_file)

@@ -45,11 +45,17 @@ pip install -e .
 # 3. Run your first agent task
 python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
 
-# 4. Compare how different judges evaluate the same task
-python -m nano_agent compare "Calculate 15% of 200"
-# Shows both rule-based (math verification) and LLM (semantic) evaluation
+# 4. Run systematic evaluation
+python -m nano_agent eval
+# Tests agent on multiple task types and reports success rate
 
-# 5. Start the interactive playground
+# 5. Compare how different judges evaluate
+python -m nano_agent compare "Calculate 15% of 200"
+
+# 6. Test prompt variations
+python -m nano_agent probe --prompt-template "What is {}?" --value "2 * 50"
+
+# 7. Start the interactive playground
 python -m nano_agent playground
 ```
 
@@ -201,10 +207,85 @@ if step >= max_steps:
 nano_agent/
 ├── agent.py          # Core agent loop with JSON parsing
 ├── model_ollama.py   # LLM interface with retry logic
-├── tools.py          # Tool registry and implementations
+├── tools.py          # Tool registry (calculator, converter, date, file writer)
 ├── judge.py          # Two evaluation systems (rule & LLM)
-└── __main__.py       # CLI interface with judge comparison
+└── __main__.py       # CLI with run, eval, probe, compare, playground
 ```
+
+### Understanding the Decision-Execution Cycle
+
+Agents work in a two-phase cycle that separates **thinking** from **doing**:
+
+1. **Decision Phase (LLM)**: The model decides what to do next
+   - Sees the task, available tools, and previous observations
+   - Outputs a structured decision (JSON)
+   - This is pure reasoning - no execution happens yet
+
+2. **Execution Phase (Python)**: The system executes the decision
+   - Parses the LLM's JSON output
+   - Calls the appropriate tool with arguments
+   - Returns results as the next observation
+
+This separation is crucial: the LLM **decides**, Python **executes**.
+
+### Trace Output Formats
+
+Use `--trace-format` to control how execution traces are displayed:
+
+#### Compact Format (Default)
+Shows clean, one-line summaries of each step:
+```bash
+python -m nano_agent run "Calculate 2 * 50" --trace-format compact
+
+📋 Execution Trace:
+  [1] calculator("2 * 50") → 100
+  [2] Return: 100
+```
+
+#### Detailed Format
+Shows the decision-execution separation clearly:
+```bash
+python -m nano_agent run "Calculate 2 * 50" --trace-format detailed
+
+📋 Execution Trace:
+  Step 1:
+    Decision: Use calculator
+    Input:    2 * 50
+    Output:   100
+    
+  Step 2:
+    Decision: Task complete
+    Return:   100
+```
+
+#### No Trace
+Hides the trace entirely, showing only results:
+```bash
+python -m nano_agent run "Calculate 2 * 50" --trace-format none
+
+Final Answer: 100
+Judge: ✅ PASS
+Stats: 2 steps | 89 tokens in | 15 tokens out | 1.2s
+```
+
+This flexibility helps you:
+- **Learn**: Use detailed format to understand the cycle
+- **Debug**: Use compact format to quickly scan executions
+- **Production**: Use none to focus on results only
+
+### New Commands for Learning
+
+#### `eval` - Systematic Testing
+```bash
+python -m nano_agent eval
+```
+Runs the agent through a test suite and reports success rate. Great for understanding agent capabilities and limitations.
+
+#### `probe` - Prompt Engineering
+```bash
+python -m nano_agent probe --prompt-template "What is {}?" --value "2 * 50"
+```
+Tests how different phrasings affect success. Demonstrates that "Calculate X" works better than "What is X?" for the same task!
 
 ### Two Judge Types: Learning Evaluation Strategies
 
@@ -470,6 +551,22 @@ python -m nano_agent run "What's 25% of 80?" --max-steps 6
 
 7. **Q: Why not use LangChain/CrewAI/etc?**
    A: Frameworks hide the mechanics. Here you see exactly how agents work - no magic.
+
+## Multi-Step Reasoning: How Agents Chain Tools
+
+The agent can handle tasks requiring multiple sequential steps through its memory system:
+
+**Long-Term Goal**: The original task is included in every prompt, reminding the agent of its objective.
+
+**Short-Term Memory**: The `observation` variable updates after each tool call, telling the agent what just happened.
+
+**Example**: "How many days between Jan 1 and Mar 15 2024, and what's that times 2?"
+1. Step 1: Agent uses `date_calc` → gets "74 days"
+2. Step 2: Agent sees "I need to multiply 74 by 2" 
+3. Step 3: Agent uses `calculator` with "74 * 2" → gets "148"
+4. Step 4: Agent returns final answer: "148"
+
+The agent maintains context across steps, enabling complex multi-tool workflows!
 
 ## What You'll Learn by Reading This Code
 
