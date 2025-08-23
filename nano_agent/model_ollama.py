@@ -1,4 +1,4 @@
-"""Ollama API interface for local LLM generation."""
+"""Simple Ollama interface for local LLM."""
 
 import requests
 from typing import Dict, Any, List
@@ -54,7 +54,7 @@ class OllamaModel:
         try:
             response = requests.post(f"{self.url}/api/generate", json=request_data, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
-            result = response.json()
+            return response.json().get("response", "").strip()
         except requests.exceptions.ConnectionError:
             raise ConnectionError(
                 "\n[ERROR] Cannot connect to Ollama at http://localhost:11434\n"
@@ -68,8 +68,3 @@ class OllamaModel:
             raise TimeoutError(f"Ollama request timed out after {REQUEST_TIMEOUT}s")
         except Exception as e:
             raise RuntimeError(f"Ollama error: {e}")
-        
-        # Track duration for cost metrics
-        self.last_duration = result.get("eval_duration", 0) / 1e9  # Convert ns to seconds
-        
-        return result.get("response", "").strip()
