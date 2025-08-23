@@ -40,7 +40,6 @@ class Agent:
     def run(self, task: str) -> Dict[str, Any]:
         """Execute observe-think-act loop until task completes or limits reached."""
         
-        # FIX: Renamed to base_context for clarity and to fix the NameError.
         base_context = f"""Tools: {json.dumps(self.tools.spec())}
 
 Decide on your next action. You can either:
@@ -53,7 +52,6 @@ Respond with ONLY a JSON object:
         
         observation = "No observation yet. You must decide on the first action."
         observations: List[str] = []
-        # FIX: Re-introduced the trace_log to record the LLM's thoughts for the judge.
         trace_log: List[str] = []
         final_answer = ""
         
@@ -61,12 +59,13 @@ Respond with ONLY a JSON object:
             if self.verbose: print(f"\n[Step {step + 1}]")
 
             prompt = ""
-            if "succeeded with result" in observation:
+            # FIX: Make the condition more specific. It should only trigger on
+            # a success that does NOT contain an error message.
+            if "succeeded with result" in observation and "error:" not in observation.lower():
                 prompt = f"""Observation: {observation}
 Task is complete. Your only valid action is to use "FINAL" to return the answer from the observation.
 Respond with ONLY a JSON object: {{"action": "FINAL", "answer": "the result from the observation"}}"""
             else:
-                # FIX: Correctly use base_context here.
                 prompt = f"Task: {task}\n{base_context}\nPrevious Observations: {observations}\nObservation: {observation}"
 
             if self.verbose:
@@ -74,7 +73,6 @@ Respond with ONLY a JSON object: {{"action": "FINAL", "answer": "the result from
             
             action_dict = self._call_model(prompt)
             
-            # FIX: Record the raw JSON response in the trace log.
             if action_dict:
                 trace_log.append(json.dumps(action_dict))
             
@@ -109,7 +107,7 @@ Respond with ONLY a JSON object: {{"action": "FINAL", "answer": "the result from
         
         return {
             "final": final_answer,
-            "trace": trace_log, # FIX: Return the trace for the judge.
+            "trace": trace_log,
             "observations": observations,
             "cost": {"ti": 0, "to": 0, "s": 0}
         }
