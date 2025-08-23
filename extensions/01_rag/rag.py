@@ -32,37 +32,19 @@ class SimpleRAG:
 
 
 def rag_tool(query: str) -> str:
-    """Search knowledge base and answer questions."""
+    """Search knowledge base and return relevant facts."""
     import os
     current_dir = os.path.dirname(os.path.abspath(__file__))
     knowledge_path = os.path.join(current_dir, "knowledge.txt")
     
     rag = SimpleRAG(knowledge_path)
     
-    # 1. RETRIEVE relevant facts
+    # Search for relevant facts
     facts = rag.search(query)
     
     if not facts:
         return "No information found in knowledge base"
     
-    # 2. Create context
-    context = "\n".join(facts)
-    
-    # 3. AUGMENT prompt with context
-    prompt = f"""Based on these facts:
-{context}
-
-Question: {query}
-Answer using ONLY the facts above (or say "not found"):"""
-    
-    # 4. GENERATE answer from context
-    import sys
-    import os
-    # Add parent dirs to path to import nano_agent
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    
-    from nano_agent.model_ollama import OllamaModel
-    model = OllamaModel()
-    answer = model.generate(prompt, format='text')
-    
-    return answer
+    # Return the most relevant fact(s) as a simple string
+    # The agent will use this information to form its answer
+    return " ".join(facts[:2])  # Return top 2 facts

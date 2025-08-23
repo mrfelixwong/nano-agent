@@ -8,6 +8,7 @@ Run this to:
 
 import sys
 import os
+import json
 
 # Add parent dirs to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -45,8 +46,9 @@ def test_hallucination_problem(verbose=True):
     from nano_agent.model_ollama import OllamaModel
     model = OllamaModel()
     
-    # Ask about something likely to hallucinate
-    response = model.generate("What year was the nano-agent created?", format='text')
+    # Ask about something likely to hallucinate - use JSON format
+    prompt = '{"question": "What year was the nano-agent created?", "task": "answer"}'
+    response = model.generate(prompt, format='json')
     
     if verbose:
         print(f"Question: What year was the nano-agent created?")
@@ -77,12 +79,16 @@ def test_rag_prevents_hallucination(verbose=True):
     assert len(facts) > 0, "Should find Eiffel Tower fact"
     assert "330 meters" in facts[0], "Should contain correct height"
     
-    # Now answer with context
+    # Now answer with context - use JSON format
     from nano_agent.model_ollama import OllamaModel
     model = OllamaModel()
     
-    prompt = f"Fact: {facts[0]}\nQuestion: How tall is the Eiffel Tower?\nAnswer with just the height:"
-    answer = model.generate(prompt, format='text')
+    prompt_json = json.dumps({
+        "context": facts[0],
+        "question": "How tall is the Eiffel Tower?",
+        "instruction": "Answer with just the height from the context"
+    })
+    answer = model.generate(prompt_json, format='json')
     
     if verbose:
         print(f"3. Ask LLM with context")
@@ -135,9 +141,11 @@ def test_rag_as_tool(verbose=True):
                     break
             print(f"6. Agent used search_knowledge tool: {tool_used}")
         
-        # Check answer is correct - be flexible with format
+        # Check answer is correct - the agent should have used the fact from RAG
         answer_str = str(result['final']).lower()
-        assert "1991" in answer_str or "guido" in answer_str or "python" in answer_str, f"Should find info about Python, got: {result['final']}"
+        # The RAG tool returns "Python was created by Guido van Rossum in 1991"
+        # So the agent should mention 1991 in its final answer
+        assert "1991" in answer_str, f"Should find year 1991 from knowledge base, got: {result['final']}"
         
     finally:
         # Restore original tools
