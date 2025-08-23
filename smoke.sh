@@ -33,5 +33,12 @@ grep -q "22.2" /tmp/nano_agent_last.out && echo "PASS: unit conversion test" || 
 run "python -m nano_agent run 'days_between 2025-01-01 2025-08-18' $VERBOSE_FLAG"
 grep -q "229" /tmp/nano_agent_last.out && echo "PASS: date calculation test" || echo "INFO: date calculation attempted"
 
+# Test RAG extension if it exists
+if [ -d "extensions/01_rag" ]; then
+    echo ""
+    echo "Testing RAG extension..."
+    python extensions/01_rag/demo.py --quiet && echo "PASS: RAG extension tests" || echo "FAIL: RAG extension tests"
+fi
+
 echo ""
 echo "ALL SMOKE TESTS PASSED"

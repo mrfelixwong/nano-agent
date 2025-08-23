@@ -1,6 +1,6 @@
 # nano-agent
 
-Learn AI agents from scratch. 296 lines. No frameworks.
+Learn AI agents from scratch. Under 200 lines of code. No frameworks.
 
 ## Quick Start
 
@@ -33,13 +33,13 @@ for step in range(max_steps):
         return answer
 ```
 
-## Core Files
+## Core Files (190 lines of code)
 
-- `agent.py` (78 lines): Perceive-think-act loop
-- `tools.py` (98 lines): Calculator, converter, date math
-- `model_ollama.py` (30 lines): Local LLM interface
-- `judge.py` (37 lines): Validates outputs
-- `__main__.py` (53 lines): CLI
+- `tools.py` (63 lines): Calculator, converter, date math
+- `agent.py` (52 lines): Perceive-think-act loop  
+- `__main__.py` (36 lines): CLI interface
+- `model_ollama.py` (25 lines): Local LLM wrapper
+- `judge.py` (14 lines): Output validation
 
 ## Examples
 
@@ -67,7 +67,7 @@ The agent doesn't just print answers - it calls tools:
 | "Convert 72 F to C" | `unit_convert("72 f to c")` | "22.2 °C" |
 | "Days between dates" | `date_calc("days_between...")` | "229" |
 
-Try `--verbose` to watch it happen!
+Try `--verbose` to watch how it reasons and call tools.
 
 ## Key Concepts
 
@@ -82,4 +82,4 @@ Try `--verbose` to watch it happen!
 ./smoke.sh  # Run all tests
 ```
 
-That's it. Read the code in 30 minutes, understand agents forever.
+That's it. Read the code in 30 minutes, understand agents.

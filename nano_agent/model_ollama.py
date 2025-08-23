@@ -12,15 +12,19 @@ class OllamaModel:
     def generate(self, prompt: str, format: str = 'json') -> str:
         """Generate response from local Ollama."""
         try:
+            request_data = {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "temperature": 0.0
+            }
+            # Only add format if it's json
+            if format == 'json':
+                request_data["format"] = "json"
+            
             response = requests.post(
                 "http://localhost:11434/api/generate",
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "format": format,
-                    "stream": False,
-                    "temperature": 0.0
-                },
+                json=request_data,
                 timeout=60
             )
             response.raise_for_status()
