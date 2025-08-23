@@ -9,7 +9,13 @@ REQUEST_TIMEOUT = 120
 
 
 class OllamaModel:
-    """Local LLM interface via Ollama."""
+    """Local LLM interface via Ollama.
+    
+    Educational notes:
+    - Temperature=0 for deterministic outputs (better for testing)
+    - JSON format enforced for structured responses
+    - Connection errors provide helpful setup instructions
+    """
     
     def __init__(self, model: str = DEFAULT_MODEL, url: str = DEFAULT_URL):
         self.model = model

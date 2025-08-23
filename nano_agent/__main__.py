@@ -1,6 +1,4 @@
 import typer
-import json
-from typing import Dict, Any, Tuple
 from .agent import Agent
 from .model_ollama import OllamaModel
 from .tools import ToolRegistry, register_default_tools
@@ -9,7 +7,7 @@ from .judge import rule_judge
 app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
 
 def _display_agent_output(result: dict, passed: bool, reason: str, verbose: bool = False):
-    # Streamlined output
+    """Display agent result with pass/fail indicator."""
     print(f"\nAnswer: {result['final']} {'✓' if passed else '✗'}")
     
     # Only show judge details if it failed
@@ -29,7 +27,7 @@ def run(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = 
     Args:
         task: The task for the agent to perform
         model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 4)
+        max_steps: Maximum reasoning steps allowed (default: 6)
         verbose: Show full LLM prompts and responses
     """
     # Setup
@@ -39,6 +37,7 @@ def run(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = 
     
     # Execute
     result = agent.run(task)
+    passed, reason = rule_judge(task, result["final"])
     _display_agent_output(result, passed, reason, verbose=verbose)
 
 @app.command()
@@ -47,7 +46,7 @@ def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = Fals
     
     Args:
         model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 4)
+        max_steps: Maximum reasoning steps allowed (default: 6)
         verbose: Show full LLM prompts and responses
         trace_format: How to display trace - 'compact', 'detailed', or 'none'
     """
@@ -72,7 +71,7 @@ def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = Fals
             
             result = agent.run(task)            
             passed, reason = rule_judge(task, result["final"])
-            _display_agent_output(result, passed, reason, trace_format=trace_format, verbose=verbose)
+            _display_agent_output(result, passed, reason, verbose=verbose)
             print("-" * 25)
             
         except (KeyboardInterrupt, EOFError):

@@ -1,11 +1,16 @@
 import json
 import os
-import time
 from typing import Dict, List, Any, Optional
 from .tools import ToolRegistry
 
 class Agent:
-    """Agent that uses LLM reasoning and tools to solve tasks."""
+    """Educational AI agent demonstrating observe-think-act loop pattern.
+    
+    Core concepts:
+    - Observation: Current state and tool results
+    - Thinking: LLM decides next action based on observations
+    - Acting: Execute tools or return final answer
+    """
     
     def __init__(self, model: Any, tools: ToolRegistry, max_steps: int = 4, verbose: bool = False):
         self.model = model
@@ -38,17 +43,22 @@ class Agent:
         return None
         
     def run(self, task: str) -> Dict[str, Any]:
-        """Execute observe-think-act loop until task completes or limits reached."""
+        """Execute observe-think-act loop until task completes or limits reached.
         
+        Returns:
+            Dict with 'final' answer, 'trace' of actions, and 'observations'
+        """
+        
+        # Structured prompt for consistent JSON responses
         base_context = f"""Tools: {json.dumps(self.tools.spec())}
 
-Decide on your next action. You can either:
-1. Use the "CALL" action to invoke a tool.
-2. Use the "FINAL" action when you have the answer.
+Choose action:
+- CALL a tool to gather information
+- FINAL when you have the answer
 
-Respond with ONLY a JSON object:
-- For CALL: {{"action": "CALL", "tool_name": "tool_name", "argument": "argument"}}
-- For FINAL: {{"action": "FINAL", "answer": "the final result"}}"""
+JSON format required:
+{{"action": "CALL", "tool_name": "...", "argument": "..."}}
+{{"action": "FINAL", "answer": "..."}}"""
         
         observation = "No observation yet. You must decide on the first action."
         observations: List[str] = []
@@ -58,13 +68,14 @@ Respond with ONLY a JSON object:
         for step in range(self.max_steps):
             if self.verbose: print(f"\n[Step {step + 1}]")
 
-            prompt = ""
+            # Build prompt based on current state
             if "succeeded with result" in observation and "error:" not in observation.lower():
-                prompt = f"""Observation: {observation}
-Task is complete. Your only valid action is to use "FINAL" to return the answer from the observation.
-Respond with ONLY a JSON object: {{"action": "FINAL", "answer": "the result from the observation"}}"""
+                # Tool succeeded - guide to return the result
+                prompt = f"""Result: {observation}
+Return this answer using: {{"action": "FINAL", "answer": "..."}}"""
             else:
-                prompt = f"Task: {task}\n{base_context}\nPrevious Observations: {observations}\nObservation: {observation}"
+                # Continue reasoning
+                prompt = f"Task: {task}\n{base_context}\nPrevious: {observations}\nCurrent: {observation}"
 
             if self.verbose:
                 print("\nPROMPT:\n--------\n" + prompt + "\n--------")

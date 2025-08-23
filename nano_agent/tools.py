@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-import re, csv, pathlib
-from typing import Tuple, Dict, Callable, Optional
+import re
+from typing import Tuple, Dict, Callable
 
 
 class ToolRegistry:
@@ -23,7 +23,10 @@ class ToolRegistry:
 
 
 def _calc(arg: str) -> str:
-    """Evaluate arithmetic expressions safely."""
+    """Evaluate arithmetic expressions safely.
+    
+    Handles: +, -, *, /, (), and percentage notation (e.g., '10%' -> 0.1)
+    """
     try:
         # REFACTOR: Pre-process the string to handle percentage notation.
         # This makes the tool more robust to the LLM's output.
@@ -91,7 +94,13 @@ def _date_calc(arg: str) -> str:
     return "error: use 'days_between YYYY-MM-DD YYYY-MM-DD' or 'YYYY-MM-DD +/- Nd'"
 
 def register_default_tools(reg: ToolRegistry) -> None:
-    """Register all default tools."""
+    """Register the three core educational tools.
+    
+    Tools demonstrate different capabilities:
+    - calculator: Math evaluation with security constraints
+    - unit_convert: Pattern matching and conversion logic
+    - date_calc: Date parsing and arithmetic
+    """
     reg.register("calculator", 
                 "Use for ALL math: multiply, divide, add, subtract, percentages.", 
                 _calc)
