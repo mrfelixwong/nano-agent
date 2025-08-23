@@ -114,12 +114,12 @@ def _display_agent_output(result: dict, passed: bool, reason: str, judge_type: s
 
 
 @app.command()
-def run(task: str, model: str = "llama3.1", budget_tokens: int = 1200, max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
+def run(task: str, model: str = "auto", budget_tokens: int = 1200, max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """Run agent on a single task.
     
     Args:
         task: The task for the agent to perform
-        model: Ollama model to use (default: llama3.1)
+        model: Ollama model to use. 'auto' detects the best available, like llama4 or llama3.1.
         budget_tokens: Maximum tokens to use (default: 400)
         max_steps: Maximum reasoning steps allowed (default: 4)
         verbose: Show full LLM prompts and responses
@@ -137,11 +137,11 @@ def run(task: str, model: str = "llama3.1", budget_tokens: int = 1200, max_steps
 
 
 @app.command()
-def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
+def playground(model: str = "auto", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """Interactive session to experiment with the agent.
     
     Args:
-        model: Ollama model to use (default: llama3.1)
+        model: Ollama model to use. 'auto' detects the best available, like llama4 or llama3.1.
         max_steps: Maximum reasoning steps allowed (default: 4)
         verbose: Show full LLM prompts and responses
         trace_format: How to display trace - 'compact', 'detailed', or 'none'
@@ -176,7 +176,7 @@ def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = Fals
 
 
 @app.command()
-def compare(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
+def compare(task: str, model: str = "auto", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
     """
     Compare rule-based and LLM judges on the same task.
     
@@ -185,12 +185,7 @@ def compare(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: boo
     
     Args:
         task: The task for the agent to perform
-        model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 4)
-    
-    Args:
-        task: The task for the agent to perform
-        model: Ollama model to use (default: llama3.1)
+        model: Ollama model to use. 'auto' detects the best available, like llama4 or llama3.1.
         max_steps: Maximum reasoning steps allowed (default: 4)
         verbose: Show full LLM prompts and responses
         trace_format: How to display trace - 'compact', 'detailed', or 'none'
@@ -237,7 +232,7 @@ def compare(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: boo
 
 
 @app.command()
-def eval(model: str = "llama3.1", max_steps: int = 4):
+def eval(model: str = "auto", max_steps: int = 4):
     """
     Run systematic evaluation on a set of test cases.
     
@@ -292,7 +287,7 @@ def eval(model: str = "llama3.1", max_steps: int = 4):
 
 
 @app.command()
-def probe(prompt_template: str = "Calculate {}", value: str = "15% of 200", model: str = "llama3.1", max_steps: int = 4):
+def probe(prompt_template: str = "Calculate {}", value: str = "15% of 200", model: str = "auto", max_steps: int = 4):
     """
     Test how different prompt phrasings affect agent success.
     

@@ -13,7 +13,7 @@ nano-agent is a minimalist AI agent implementation for educational purposes. It 
 # Run single task
 python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
 
-# Run smoke tests (requires Ollama with llama3.1)
+# Run smoke tests (requires Ollama with llama4 or llama3.1)
 ./smoke.sh
 ```
 
@@ -21,6 +21,7 @@ python -m nano_agent run "Add 8.5% to 3.03e12 exactly"
 ```bash
 # Install Ollama first
 brew install ollama
+ollama run llama4
 ollama run llama3.1
 
 # Install package in development mode
@@ -33,7 +34,7 @@ The agent follows an observe-plan-act loop with these core components:
 
 1. **Agent** (`nano_agent/agent.py`): Orchestrates execution with token budget enforcement (default: 400) and max steps (default: 4). Automatically returns numerical results from numerical tools.
 
-2. **Model Interface** (`nano_agent/model_ollama.py`): Ollama wrapper enforcing structured responses (`CALL: tool | arg` or `FINAL: answer`). Includes retry logic for malformed responses.
+2. **Model Interface** (`nano_agent/model_ollama.py`): Ollama wrapper enforcing structured responses (`CALL: tool | arg` or `FINAL: answer`). Includes retry logic for malformed responses. It will auto-detect available llama models.
 
 3. **Tools** (`nano_agent/tools.py`): Extensible registry with 3 built-in tools:
    - `calculator`: Safe arithmetic evaluation
@@ -48,7 +49,7 @@ The agent follows an observe-plan-act loop with these core components:
 
 - **Smoke Tests**: Three core scenarios testing percentage math (expected: 3287550000000.0), unit conversion (expected: 22.2), and date calculation (expected: 229)
 - **No traditional unit tests**: Focus on end-to-end integration testing
-- **Requires Ollama running with llama3.1 model**
+- **Requires Ollama running with llama4 or llama3.1 model**
 
 ## Key Development Notes
 

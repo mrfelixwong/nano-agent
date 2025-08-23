@@ -35,7 +35,8 @@ Beyond just making an agent, nano-agent teaches you how to evaluate it. It inclu
 ```bash
 # 1. Install Ollama (local LLM runtime - one-time setup)
 brew install ollama        # macOS (or see ollama.ai for Linux/Windows)
-ollama run llama3.1        # Downloads ~5GB model, runs locally forever
+ollama run llama4        # Downloads ~5GB model, runs locally forever
+ollama run llama3.1      # Or download the previous version
 
 # 2. Install nano-agent
 git clone https://github.com/yourusername/nano-agent.git
