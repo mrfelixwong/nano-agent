@@ -14,7 +14,6 @@ def run(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = 
     agent = Agent(OllamaModel(model), max_steps, verbose)
     result = agent.run(task)
     
-    # Display result
     passed, reason = rule_judge(task, result["final"])
     status = "✓" if passed else "✗"
     print(f"\nAnswer: {result['final']} {status}")

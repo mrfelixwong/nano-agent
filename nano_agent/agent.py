@@ -25,10 +25,7 @@ class Agent:
             if self.verbose:
                 print(f"\n[Step {step + 1}]")
             
-            # Build prompt
             context = "\n".join(observations[-3:]) if observations else "Starting"
-            
-            # If last tool succeeded with a result, guide to FINAL
             if observations and "error" not in observations[-1]:
                 prompt = f"""Task: {task}
 Last result: {observations[-1]}
@@ -47,7 +44,6 @@ Respond with JSON:
             if self.verbose:
                 print(f"PROMPT:\n{prompt}\n")
             
-            # Get LLM response
             response = self.model.generate(prompt, format='json')
             try:
                 action = json.loads(response)
@@ -61,7 +57,6 @@ Respond with JSON:
             if self.verbose:
                 print(f"ACTION: {action}")
             
-            # Handle action
             if action.get("action") == "FINAL":
                 return {"final": action.get("answer", ""), "trace": trace, "observations": observations}
             

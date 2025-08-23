@@ -19,7 +19,7 @@ class OllamaModel:
                     "prompt": prompt,
                     "format": format,
                     "stream": False,
-                    "temperature": 0.0  # Deterministic for testing
+                    "temperature": 0.0
                 },
                 timeout=60
             )

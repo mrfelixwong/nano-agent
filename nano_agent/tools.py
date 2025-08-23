@@ -7,12 +7,10 @@ import re
 def calculator(expr: str) -> str:
     """Basic arithmetic calculator."""
     try:
-        # Remove spaces and validate characters
         clean = re.sub(r'\s+', '', expr.strip())
-        # Handle percentage notation: 15% -> 0.15
         clean = re.sub(r'(\d+(?:\.\d+)?)%', r'(\1/100)', clean)
         
-        if not all(c in '0123456789+-*/().eE*' for c in clean):  # Allow ** for power
+        if not all(c in '0123456789+-*/().eE*' for c in clean):
             return "error: invalid characters"
         
         return str(eval(clean, {"__builtins__": {}}, {}))
@@ -27,19 +25,17 @@ def unit_convert(arg: str) -> str:
         value, from_unit, _, to_unit = parts
         value = float(value)
         
-        # Temperature
         if from_unit == 'f' and to_unit == 'c':
             return f"{(value-32)*5/9:.1f} °C"
         if from_unit == 'c' and to_unit == 'f':
             return f"{value*9/5+32:.1f} °F"
         
-        # Distance  
+  
         if from_unit == 'km' and to_unit == 'mi':
             return f"{value*0.621371:.3f} mi"
         if from_unit == 'mi' and to_unit == 'km':
             return f"{value/0.621371:.3f} km"
             
-        # Weight
         if from_unit == 'kg' and to_unit == 'lb':
             return f"{value*2.20462:.3f} lb"
         if from_unit == 'lb' and to_unit == 'kg':
@@ -54,7 +50,6 @@ def date_calc(arg: str) -> str:
     """Calculate days between dates or add/subtract days."""
     text = arg.strip().lower()
     
-    # Pattern: days_between YYYY-MM-DD YYYY-MM-DD
     if text.startswith('days_between'):
         try:
             _, date1_str, date2_str = text.split()
@@ -64,7 +59,6 @@ def date_calc(arg: str) -> str:
         except:
             pass
     
-    # Pattern: YYYY-MM-DD +/- Nd
     match = re.match(r'(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d', text)
     if match:
         try:
@@ -78,7 +72,6 @@ def date_calc(arg: str) -> str:
     return "error: use 'days_between YYYY-MM-DD YYYY-MM-DD' or 'YYYY-MM-DD +/- Nd'"
 
 
-# Simple dictionary of tools
 TOOLS = {
     "calculator": ("Use for ALL math: multiply, divide, add, subtract, percentages.", calculator),
     "unit_convert": ("Convert temperature/distance/weight units ONLY.", unit_convert),
