@@ -71,9 +71,9 @@ def date_calc(arg: str) -> str:
 
 
 TOOLS = {
-    "calculator": ("Use for ALL math: multiply, divide, add, subtract, percentages.", calculator),
-    "unit_convert": ("Convert temperature/distance/weight units ONLY.", unit_convert),
-    "date_calc": ("Calculate days between dates or add/subtract days from dates ONLY.", date_calc)
+    "calculator": ("Math operations (multiply, divide, add, subtract, percentages). Pass expression as string.", calculator),
+    "unit_convert": ("Convert units. Format: 'value from_unit to to_unit' (e.g., '72 F to C')", unit_convert),
+    "date_calc": ("Date operations. Format: 'days_between YYYY-MM-DD YYYY-MM-DD' or 'YYYY-MM-DD +/- Nd'", date_calc)
 }
 
 

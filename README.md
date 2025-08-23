@@ -19,10 +19,10 @@ python -m nano_agent run "Calculate 15% of 200"
 ```python
 # The agent loop (simplified)
 for step in range(max_steps):
-    # 1. PERCEIVE: Current state
+    # 1. OBSERVE: Process current state
     prompt = f"Task: {task}\nTools: {available_tools}\nContext: {observations}"
     
-    # 2. THINK: LLM decides action (returns JSON)
+    # 2. THINK: Reasoning engine decides action (returns JSON)
     action = model.generate(prompt)  # → {"action": "CALL", "tool_name": "calculator", "argument": "2+2"}
     
     # 3. ACT: Execute tool or return answer
@@ -35,11 +35,10 @@ for step in range(max_steps):
 
 ## Core Files (190 lines of code)
 
+- `agent.py` (75 lines): Observe-think-act loop with judging
 - `tools.py` (63 lines): Calculator, converter, date math
-- `agent.py` (52 lines): Perceive-think-act loop  
 - `__main__.py` (36 lines): CLI interface
-- `model_ollama.py` (25 lines): Local LLM wrapper
-- `judge.py` (14 lines): Output validation
+- `model_ollama.py` (23 lines): Reasoning engine wrapper
 
 ## Examples
 
@@ -71,9 +70,9 @@ Try `--verbose` to watch how it reasons and call tools.
 
 ## Key Concepts
 
-**Agent Loop**: Repeatedly asks LLM "what next?" until done  
-**Tools**: Functions the LLM can call (math, convert, dates)  
-**JSON Format**: Structured LLM↔code communication  
+**Agent Loop**: Repeatedly asks reasoning engine "what next?" until done  
+**Tools**: Functions the agent can call (math, convert, dates)  
+**JSON Format**: Structured agent↔tool communication  
 **Safety**: Max steps prevent infinite loops  
 
 ## Test
