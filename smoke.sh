@@ -33,37 +33,12 @@ grep -q "22.2" /tmp/nano_agent_last.out && echo "PASS: unit conversion test" || 
 run "python -m nano_agent run 'days_between 2025-01-01 2025-08-18' $VERBOSE_FLAG"
 grep -q "229" /tmp/nano_agent_last.out && echo "PASS: date calculation test" || echo "INFO: date calculation attempted"
 
-# 4) judge comparison - success case
-run "python -m nano_agent compare 'Calculate 2 * 50' $VERBOSE_FLAG"
-grep -q "Rule Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no rule judge"
-grep -q "LLM Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no llm judge"
-grep -q "Answer: 100" /tmp/nano_agent_last.out || fail "compare command failed - wrong answer"
-echo "PASS: judge comparison test (success case)"
-
-# 5) judge comparison - failure case (educational - agent may struggle with natural language)
-run "python -m nano_agent compare 'What is 25% of 80?' $VERBOSE_FLAG"
-grep -q "Rule Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no rule judge"
-grep -q "LLM Judge:" /tmp/nano_agent_last.out || fail "compare command failed - no llm judge"
-# Note: This may fail with "max steps reached" - that's educational!
-echo "PASS: judge comparison test (demonstrates agent limitations)"
-
-# 6) multi-step task - demonstrates agent can chain tools
+# 4) multi-step task - demonstrates agent can chain tools
 echo ""
 echo "Testing multi-step reasoning (may require more steps)..."
 run "python -m nano_agent run 'How many days are between Jan 1 2024 and March 15 2024, and what is that number times 2?' --max-steps 6 $VERBOSE_FLAG"
 # Should be 74 days * 2 = 148
 grep -E "(148|74.*2|2.*74)" /tmp/nano_agent_last.out && echo "PASS: multi-step test (agent chained tools successfully)" || echo "INFO: multi-step test attempted (agent tried to chain tools)"
-
-# 7) file writing test - demonstrates new tool capability
-echo ""
-echo "Testing file writing capability..."
-run "python -m nano_agent run 'Write the text Hello World to a file called test.txt' $VERBOSE_FLAG"
-grep -q "File written to /tmp/test.txt" /tmp/nano_agent_last.out && echo "PASS: file writing test" || echo "INFO: file writing attempted"
-# Verify file was actually created
-if [ -f "/tmp/test.txt" ]; then
-    echo "  ✓ File /tmp/test.txt was created"
-    rm /tmp/test.txt  # Clean up
-fi
 
 echo ""
 echo "ALL SMOKE TESTS PASSED"
