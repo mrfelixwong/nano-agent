@@ -22,7 +22,9 @@ class OllamaModel:
             "model": self.model,
             "prompt": prompt,
             "format": format,
-            "stream": False
+            "stream": False,
+            "temperature": 0.0,  # Zero temperature for completely deterministic responses
+            "top_p": 1.0        # Take the most likely token at each step
         }
         
         try:

@@ -12,36 +12,9 @@ def _get_judgment(agent: Agent, task: str, result: Dict[str, Any]) -> Tuple[bool
     passed, reason = rule_judge(task, result["final"])
     return passed, f"[Rule Judge] {reason}"
 
-def _display_agent_output(result: dict, passed: bool, reason: str, judge_type: str = "", verbose: bool = False):
-    usage_stats = result["cost"]
-    
+def _display_agent_output(result: dict, passed: bool, reason: str, verbose: bool = False):
     # Streamlined output
     print(f"\nAnswer: {result['final']} {'✓' if passed else '✗'}")
-    
-    # Show steps in compact form if not verbose and trace requested
-    if not verbose:
-        steps = []
-        for i, step_str in enumerate(result["trace"]):
-            try:
-                data = json.loads(step_str)
-                if data.get("action") == "CALL":
-                    tool = data.get('tool_name')
-                    arg = data.get('argument')
-                    if i < len(result.get("observations", [])):
-                        obs = result["observations"][i]
-                        if "succeeded" in obs and "result:" in obs:
-                            res = obs.split("result: ", 1)[1]
-                        elif "returned error:" in obs:
-                            res = "error: " + obs.split("returned error: ", 1)[1]
-                        else:
-                            res = obs
-                        steps.append(f"{tool}(\"{arg}\") → {res}")
-            except:
-                pass
-        if steps:
-            print(f"Steps: {' | '.join(steps)}")
-    
-    print(f"Time: {usage_stats['s']:.1f}s ({len(result['trace'])} steps)")
     
     # Only show judge details if it failed
     if not passed:

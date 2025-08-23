@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-import re
-from typing import Tuple, Dict, Callable
+import re, csv, pathlib
+from typing import Tuple, Dict, Callable, Optional
 
 
 class ToolRegistry:
@@ -17,15 +17,19 @@ class ToolRegistry:
         """Get the function for a registered tool."""
         return self._tools[name][1]
     
-    def spec(self) -> list[Tuple[str, str]]:
+    def spec(self) -> list[Dict[str, str]]:
         """Get specifications of all registered tools."""
-        return [(name, desc) for name, (desc, _) in self._tools.items()]
+        return [{"name": name, "description": desc} for name, (desc, _) in self._tools.items()]
 
 
 def _calc(arg: str) -> str:
     """Evaluate arithmetic expressions safely."""
     try:
-        expr = re.sub(r"\s+", " ", arg.strip().strip("'\"`"))
+        # REFACTOR: Pre-process the string to handle percentage notation.
+        # This makes the tool more robust to the LLM's output.
+        processed_arg = re.sub(r"(\d+(\.\d+)?)%", r"(\1/100)", arg)
+
+        expr = re.sub(r"\s+", " ", processed_arg.strip().strip("'\"`"))
         allowed_chars = "0123456789+-*/(). eE"
         
         if any(ch not in allowed_chars for ch in expr):
@@ -62,41 +66,29 @@ def _unit_convert(arg: str) -> str:
 
 
 def _date_calc(arg: str) -> str:
-    """Calculate date differences or arithmetic."""
-    text = arg.strip().lower().replace("'", "").replace('"', "")
+    """Calculate days between dates or add/subtract days from dates."""
+    text = arg.strip().lower()
     
-    try:
-        # Simple approach: Find date patterns directly
-        if 'days_between' in text:
-            dates_found = []
-            
-            # Pattern 1: ISO format YYYY-MM-DD
-            iso_dates = re.findall(r'\d{4}-\d{2}-\d{2}', text)
-            for date_str in iso_dates:
-                dates_found.append(datetime.fromisoformat(date_str))
-            
-            # Pattern 2: "Month DD YYYY" like "Jan 1 2024" or "January 1 2024"
-            month_dates = re.findall(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2})\s+(\d{4})', text)
-            month_map = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-                        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
-            for month_str, day, year in month_dates:
-                month = month_map[month_str[:3]]
-                dates_found.append(datetime(int(year), month, int(day)))
-            
-            if len(dates_found) >= 2:
-                return str(abs((dates_found[1] - dates_found[0]).days))
-        
-        # Try "DATE +/- Nd" pattern
-        match = re.match(r'(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d', text)
-        if match:
-            base_date = datetime.fromisoformat(match.group(1))
-            days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
-            result = base_date + timedelta(days=days)
-            return result.date().isoformat()
-        
-        return "error: use 'days_between DATE1 DATE2' or 'DATE +/- Nd'"
-    except Exception as e:
-        return f"error: {e}"
+    # Pattern: days_between DATE1 DATE2
+    if match := re.match(r"days_between\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})", text):
+        date1 = datetime.fromisoformat(match.group(1))
+        date2 = datetime.fromisoformat(match.group(2))
+        return str((date2 - date1).days)
+    
+    # Pattern: DATE +/- Nd
+    if match := re.match(r"(\d{4}-\d{2}-\d{2})\s*([+-])\s*(\d+)d", text):
+        base_date = datetime.fromisoformat(match.group(1))
+        days = int(match.group(3)) * (1 if match.group(2) == '+' else -1)
+        result_date = base_date + timedelta(days=days)
+        return result_date.date().isoformat()
+    
+    # Fallback for natural language date difference
+    if match := re.match(r"(\d{4}-\d{2}-\d{2})\s+(?:to|and|between)\s+(\d{4}-\d{2}-\d{2})", text):
+        date1 = datetime.fromisoformat(match.group(1))
+        date2 = datetime.fromisoformat(match.group(2))
+        return str((date2 - date1).days)
+    
+    return "error: use 'days_between YYYY-MM-DD YYYY-MM-DD' or 'YYYY-MM-DD +/- Nd'"
 
 def register_default_tools(reg: ToolRegistry) -> None:
     """Register all default tools."""
