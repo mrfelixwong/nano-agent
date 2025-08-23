@@ -182,12 +182,7 @@ def compare(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: boo
     
     Educational tool that runs a task once and evaluates it with both judge types,
     highlighting their different approaches and trade-offs.
-    
-    Args:
-        task: The task for the agent to perform
-        model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 4)
-    
+       
     Args:
         task: The task for the agent to perform
         model: Ollama model to use (default: llama3.1)
