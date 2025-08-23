@@ -8,10 +8,6 @@ from .judge import rule_judge
 
 app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
 
-def _get_judgment(agent: Agent, task: str, result: Dict[str, Any]) -> Tuple[bool, str]:
-    passed, reason = rule_judge(task, result["final"])
-    return passed, f"[Rule Judge] {reason}"
-
 def _display_agent_output(result: dict, passed: bool, reason: str, verbose: bool = False):
     # Streamlined output
     print(f"\nAnswer: {result['final']} {'✓' if passed else '✗'}")
@@ -43,9 +39,7 @@ def run(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = 
     
     # Execute
     result = agent.run(task)
-    passed, reason = _get_judgment(agent, task, result)
     _display_agent_output(result, passed, reason, verbose=verbose)
-
 
 @app.command()
 def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
@@ -77,7 +71,7 @@ def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = Fals
                 break
             
             result = agent.run(task)            
-            passed, reason = _get_judgment(agent, task, result)
+            passed, reason = rule_judge(task, result["final"])
             _display_agent_output(result, passed, reason, trace_format=trace_format, verbose=verbose)
             print("-" * 25)
             

@@ -59,8 +59,6 @@ Respond with ONLY a JSON object:
             if self.verbose: print(f"\n[Step {step + 1}]")
 
             prompt = ""
-            # FIX: Make the condition more specific. It should only trigger on
-            # a success that does NOT contain an error message.
             if "succeeded with result" in observation and "error:" not in observation.lower():
                 prompt = f"""Observation: {observation}
 Task is complete. Your only valid action is to use "FINAL" to return the answer from the observation.
@@ -109,5 +107,4 @@ Respond with ONLY a JSON object: {{"action": "FINAL", "answer": "the result from
             "final": final_answer,
             "trace": trace_log,
             "observations": observations,
-            "cost": {"ti": 0, "to": 0, "s": 0}
         }

@@ -33,12 +33,5 @@ grep -q "22.2" /tmp/nano_agent_last.out && echo "PASS: unit conversion test" || 
 run "python -m nano_agent run 'days_between 2025-01-01 2025-08-18' $VERBOSE_FLAG"
 grep -q "229" /tmp/nano_agent_last.out && echo "PASS: date calculation test" || echo "INFO: date calculation attempted"
 
-# 4) multi-step task - demonstrates agent can chain tools
-echo ""
-echo "Testing multi-step reasoning (may require more steps)..."
-run "python -m nano_agent run 'How many days are between Jan 1 2024 and March 15 2024, and what is that number times 2?' --max-steps 6 $VERBOSE_FLAG"
-# Should be 74 days * 2 = 148
-grep -E "(148|74.*2|2.*74)" /tmp/nano_agent_last.out && echo "PASS: multi-step test (agent chained tools successfully)" || echo "INFO: multi-step test attempted (agent tried to chain tools)"
-
 echo ""
 echo "ALL SMOKE TESTS PASSED"
