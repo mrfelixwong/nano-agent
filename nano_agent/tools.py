@@ -98,47 +98,14 @@ def _date_calc(arg: str) -> str:
     except Exception as e:
         return f"error: {e}"
 
-
-def _write_file(arg: str) -> str:
-    """Write content to a file in /tmp directory for safety."""
-    try:
-        # Parse argument: "filename.txt: content to write"
-        if ':' not in arg:
-            return "error: format should be 'filename: content'"
-        
-        filename, content = arg.split(':', 1)
-        filename = filename.strip()
-        content = content.strip()
-        
-        # Safety: only allow writing to /tmp directory
-        if not filename:
-            return "error: no filename provided"
-        
-        # Remove any path components for safety
-        import os
-        filename = os.path.basename(filename)
-        filepath = f"/tmp/{filename}"
-        
-        # Write the file
-        with open(filepath, 'w') as f:
-            f.write(content)
-        
-        return f"File written to {filepath}"
-    except Exception as e:
-        return f"error: {e}"
-
-
 def register_default_tools(reg: ToolRegistry) -> None:
     """Register all default tools."""
     reg.register("calculator", 
-                "Use for ALL math: multiply, divide, add, subtract, percentages. Examples: '74*2', '3.03e12*(1+8.5/100)' for adding 8.5%, '200*0.15' for 15% of 200.", 
+                "Use for ALL math: multiply, divide, add, subtract, percentages.", 
                 _calc)
     reg.register("unit_convert", 
-                "Convert temperature/distance/weight units ONLY. Examples: '72 F to C', '10 km to mi'. NEVER use for multiplication or arithmetic.", 
+                "Convert temperature/distance/weight units ONLY.", 
                 _unit_convert)
     reg.register("date_calc", 
-                "Calculate days between dates or add/subtract days from dates ONLY. Examples: 'days_between 2024-01-01 2024-03-15'. NEVER use for multiplying numbers.", 
+                "Calculate days between dates or add/subtract days from dates ONLY.", 
                 _date_calc)
-    reg.register("write_file",
-                "Write to file: 'filename.txt: content'. Files saved to /tmp/.",
-                _write_file)

@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple, Optional
 from .tools import ToolRegistry
 
 class Agent:
@@ -13,10 +13,25 @@ class Agent:
         self.max_steps = max_steps
         self.verbose = verbose or os.environ.get('NANO_AGENT_VERBOSE', '').lower() in ('1', 'true', 'yes')
 
-    def _log(self, emoji: str, event_type: str, details: str = ""):
-        """Handles all verbose logging if the verbose flag is set."""
-        if self.verbose:
-            print(f"  {emoji} {event_type}: {details}")
+    def _log_llm_response(self, action_dict: Optional[Dict[str, Any]], raw_response: str):
+        """A single function to log the LLM's response in verbose mode."""
+        if not self.verbose:
+            return
+
+        if action_dict is None:
+            # This logs the final error when parsing failed after retries
+            print(f"  → ABORT: Failed to get valid JSON. Last output: {raw_response}")
+            return
+
+        action = action_dict.get("action", "?")
+        if action == "PLAN":
+            print(f"  DECISION: Create plan with {len(action_dict.get('steps', []))} steps")
+        elif action == "CALL":
+            print(f"  DECISION: Use {action_dict.get('tool_name')} tool")
+        elif action == "FINAL":
+            print(f"  DECISION: Return the result")
+        else:
+            print(f"  DECISION: {action}")
     
     def _execute_tool(self, tool_name: str, arg: str) -> str:
         """Execute tool and return formatted observation string."""
@@ -29,21 +44,49 @@ class Agent:
             return f"Tool '{tool_name}' returned error: {str(result)[6:].strip()}"
         return f"Tool '{tool_name}' succeeded with result: {result}"
 
-    def _call_model_with_json_retry(self, prompt: str, retry_limit: int = 3):
-        # ... (this method is unchanged) ...
+    def _call_model(self, prompt: str, retry_limit: int = 3) -> Tuple[Optional[Dict[str, Any]]]:
+        """
+        Calls the model, handling JSON decoding errors with a retry mechanism.
+        Returns: tuple of (parsed_action, raw_response)
+        """
+        current_prompt = prompt
+        
+        for retry_attempt in range(retry_limit):
+            response = self.model.generate(current_prompt, format='json').strip()
 
-    def run(self, task: str, token_budget: int = 400) -> Dict[str, Any]:
+            try:
+                parsed_action = json.loads(response)
+                # Success, log and return
+                #self._log_llm_response(parsed_action, response)
+                return (parsed_action)
+            except json.JSONDecodeError:
+                if self.verbose:
+                    print(f"  - Invalid JSON, retrying ({retry_attempt + 1}/{retry_limit})...")
+                
+                if retry_attempt == 0:
+                    current_prompt = f"{prompt}\n\nError: LLM returned invalid JSON. Please re-format your response as a valid JSON object."
+                else:
+                    current_prompt = f"{prompt}\n\nI repeat: Respond ONLY with a JSON object. Do NOT include any other text."
+
+        # Failure after all retries
+        #self._log_llm_response(None, response)
+        return (None)
+    def run(self, task: str) -> Dict[str, Any]:
         """Execute observe-think-act loop until task completes or limits reached."""
         
         context = f"""Task: {task}
 Tools: {' | '.join([f'{n}: {d}' for n, d in self.tools.spec()])}
 
-Respond with ONLY a JSON object with the schema:
-{{"action": "PLAN"|"CALL"|"FINAL", "steps":[]|"tool_name"|"answer", ...}}"""
+For simple tasks: Use CALL directly.
+For multi-step tasks: Use PLAN first.
+
+Respond with ONLY a JSON object:
+- For PLAN: {{"action": "PLAN", "steps": ["step 1 description", "step 2 description"]}}
+- For CALL: {{"action": "CALL", "tool_name": "calculator", "argument": "2*50"}}
+- For FINAL: {{"action": "FINAL", "answer": "the result"}}"""
         
         observation = "No observation yet. You must decide on the first action."
         observations: List[str] = []
-        trace_log: List[str] = []
         final_answer = ""
         
         plan_state = {"steps": [], "current_step": 0}
@@ -54,20 +97,30 @@ Respond with ONLY a JSON object with the schema:
             # REFACTOR: Removed the THINK log.
 
             prompt = f"{context}\nPrevious Observations: {observations}\nObservation: {observation}"
-            if plan_state["steps"]:
+            if plan_state["steps"] and plan_state["current_step"] < len(plan_state["steps"]):
+                # Handle plan steps that might be strings or dicts
+                current_step_data = plan_state['steps'][plan_state['current_step']]
+                if isinstance(current_step_data, dict):
+                    step_desc = str(current_step_data)
+                else:
+                    step_desc = current_step_data
                 plan_context = f"\nPlan: {plan_state['steps']}"
-                plan_context += f"\nCurrent Step {plan_state['current_step']+1}: {plan_state['steps'][plan_state['current_step']]}"
+                plan_context += f"\nCurrent Step {plan_state['current_step']+1}: {step_desc}"
                 prompt += plan_context
             
-            action_dict, raw_response = self._call_model_with_json_retry(prompt)
-            trace_log.append(raw_response)
+            if self.verbose:
+                print("\nPROMPT:")
+                print("--------")
+                print(prompt)
+                print("--------")
             
-            # The only log inside the loop is the raw plan from the LLM.
-            self._log("💡", "PLAN", raw_response)
-
-            if action_dict is None:
-                final_answer = f"error: Failed to get valid JSON after retries. Last output: {raw_response}"
-                break
+            action_dict = self._call_model(prompt)
+            
+            if self.verbose:
+                print("\nRESPONSE:")
+                print("--------")
+                print(json.dumps(action_dict, indent=2))
+                print("--------")
         
             action = action_dict.get("action", "ERROR")
             
@@ -102,6 +155,6 @@ Respond with ONLY a JSON object with the schema:
         
         return {
             "final": final_answer,
-            "trace": trace_log,
             "observations": observations,
+            "cost": {"ti": 0, "to": 0, "s": 0}  # Placeholder for cost tracking
         }

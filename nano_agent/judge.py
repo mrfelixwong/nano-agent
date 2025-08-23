@@ -16,25 +16,11 @@ def _safe_eval(expr: str) -> Optional[float]:
     except:
         return None
 
-def rule_judge(task: str, final_answer: str, trace: List[str]) -> Tuple[bool, str]:
+def rule_judge(task: str, final_answer: str) -> Tuple[bool, str]:
     """
     (Default Judge) A deterministic judge that verifies the agent's final answer
     by re-computing the result from its tool calls.
     """
-    # Find the last tool call in the trace to evaluate.
-    last_call = None
-    for step_str in reversed(trace):
-        try:
-            step_data = json.loads(step_str)
-            if step_data.get("action") == "CALL":
-                last_call = step_data
-                break
-        except (json.JSONDecodeError, TypeError):
-            continue
-
-    if not last_call:
-        return False, "FAIL: Could not find a valid tool call in the trace."
-
     tool_name = last_call.get("tool_name")
     argument = last_call.get("argument")
 
@@ -58,38 +44,3 @@ def rule_judge(task: str, final_answer: str, trace: List[str]) -> Tuple[bool, st
     # This ensures flexibility while maintaining verification capabilities.
     # Default for unknown tools
     return False, f"UNVERIFIED: Rule judge cannot verify tool '{tool_name}'."
-
-def llm_judge(model: OllamaModel, task: str, result: Dict[str, Any]) -> Tuple[bool, str]:
-    """Judge if agent successfully completed the task by examining its trace."""
-    
-    # Parse trace into readable format
-    trace_lines = []
-    for step in result.get("trace", []):
-        try:
-            data = json.loads(step)
-            action = data.get("action")
-            if action == "CALL":
-                trace_lines.append(f'CALL: {data.get("tool_name")} | {data.get("argument")}')
-            elif action == "FINAL":
-                trace_lines.append(f'FINAL: {data.get("answer")}')
-        except (json.JSONDecodeError, TypeError):
-            trace_lines.append(str(step))
-    
-    judge_prompt = f"""
-You are an AI agent evaluator. Judge the agent's success based on its trace and final answer.
-Task: "{task}"
-Trace:
----
-{chr(10).join(trace_lines)}
----
-Final Answer: "{result.get('final', 'None')}"
-
-Respond ONLY with JSON: {{"success": boolean, "reason": "one-sentence explanation"}}
-"""
-    
-    try:
-        response_str = model.generate(judge_prompt, format='json')
-        output = json.loads(response_str)
-        return output.get('success', False), output.get('reason', 'Invalid response')
-    except Exception as e:
-        return False, f"Judge error: {e}"
