@@ -1,0 +1,8 @@
+The Eiffel Tower is 330 meters tall and was built in 1889.
+Python was created by Guido van Rossum in 1991.
+Einstein published the theory of relativity in 1905.
+The speed of light is 299,792,458 meters per second.
+Tokyo is the capital of Japan with 14 million people.
+The Great Wall of China is over 21,000 kilometers long.
+Water boils at 100 degrees Celsius at sea level.
+The Moon is approximately 384,400 kilometers from Earth.
