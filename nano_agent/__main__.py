@@ -1,82 +1,54 @@
+"""CLI for the educational agent."""
+
 import typer
 from .agent import Agent
 from .model_ollama import OllamaModel
-from .tools import ToolRegistry, register_default_tools
 from .judge import rule_judge
 
 app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
 
-def _display_agent_output(result: dict, passed: bool, reason: str, verbose: bool = False):
-    """Display agent result with pass/fail indicator."""
-    print(f"\nAnswer: {result['final']} {'✓' if passed else '✗'}")
-    
-    # Only show judge details if it failed
-    if not passed:
-        # Extract just the key part of the reason
-        if "FAIL:" in reason:
-            reason = reason.split("FAIL:", 1)[1].strip()
-        elif "error:" in reason:
-            reason = reason.split("error:", 1)[1].strip()
-        print(f"Issue: {reason}")
-
 
 @app.command()
 def run(task: str, model: str = "llama3.1", max_steps: int = 6, verbose: bool = False):
-    """Run agent on a single task.
-    
-    Args:
-        task: The task for the agent to perform
-        model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 6)
-        verbose: Show full LLM prompts and responses
-    """
-    # Setup
-    tools = ToolRegistry()
-    register_default_tools(tools)
-    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps, verbose=verbose)
-    
-    # Execute
+    """Run agent on a single task."""
+    agent = Agent(OllamaModel(model), max_steps, verbose)
     result = agent.run(task)
+    
+    # Display result
     passed, reason = rule_judge(task, result["final"])
-    _display_agent_output(result, passed, reason, verbose=verbose)
+    status = "✓" if passed else "✗"
+    print(f"\nAnswer: {result['final']} {status}")
+    if not passed and "error:" in reason:
+        print(f"Issue: {reason.split(':', 1)[-1].strip()}")
 
-@app.command()
-def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):
-    """Interactive session to experiment with the agent.
+
+@app.command()  
+def playground(model: str = "llama3.1", max_steps: int = 6, verbose: bool = False):
+    """Interactive session to experiment with the agent."""
+    print("nano-agent playground")
+    print("Type task and press Enter. Type 'quit' to exit.\n")
     
-    Args:
-        model: Ollama model to use (default: llama3.1)
-        max_steps: Maximum reasoning steps allowed (default: 6)
-        verbose: Show full LLM prompts and responses
-        trace_format: How to display trace - 'compact', 'detailed', or 'none'
-    """
-    print("Starting Nano-Agent Playground...")
-    print("Using hybrid judge (rule-based with LLM fallback)")
-    if verbose:
-        print("[VERBOSE MODE: Showing full LLM prompts and responses]")
-    print(f"Trace format: {trace_format}")
-    print('Type your task and press Enter. Type "quit" or "exit" to leave.')
-    
-    # Setup
-    tools = ToolRegistry()
-    register_default_tools(tools)
-    agent = Agent(model=OllamaModel(model), tools=tools, max_steps=max_steps, verbose=verbose)
+    agent = Agent(OllamaModel(model), max_steps, verbose)
     
     while True:
         try:
             task = input(">> ")
             if task.lower() in ["quit", "exit"]:
-                print("Exiting playground.")
                 break
             
-            result = agent.run(task)            
+            result = agent.run(task)
             passed, reason = rule_judge(task, result["final"])
-            _display_agent_output(result, passed, reason, verbose=verbose)
-            print("-" * 25)
+            
+            status = "✓" if passed else "✗"
+            print(f"\nAnswer: {result['final']} {status}")
+            if not passed:
+                print(f"Issue: {reason}")
+            print("-" * 40)
             
         except (KeyboardInterrupt, EOFError):
-            print("\nExiting playground.")
+            print("\nBye!")
             break
+
 
 if __name__ == "__main__":
     app()
