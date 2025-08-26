@@ -1,17 +1,54 @@
 """Ollama API interface for local LLM generation."""
 
 import requests
+import os
 from typing import Dict, Any
 
-DEFAULT_MODEL = "llama3.1"
+# Models in order of preference (best to fallback)
+PREFERRED_MODELS = [
+    "gpt-oss:20b",
+    "qwen3:30b", 
+    "gemma3:27b-it-qat",
+    "llama3.1:latest"
+]
+
 DEFAULT_URL = "http://localhost:11434/api/generate"
 REQUEST_TIMEOUT = 120
 
 
-class OllamaModel:
-    """Local LLM interface via Ollama."""
+def get_available_models(url: str = DEFAULT_URL) -> list:
+    """Get list of available models from Ollama."""
+    try:
+        response = requests.get(url.replace('/api/generate', '/api/tags'), timeout=10)
+        response.raise_for_status()
+        models = response.json().get('models', [])
+        return [model['name'] for model in models]
+    except:
+        return []
+
+
+def detect_best_model() -> str:
+    """Auto-detect the best available model from our preferred list."""
+    # Check environment variable first
+    if 'OLLAMA_MODEL' in os.environ:
+        return os.environ['OLLAMA_MODEL']
     
-    def __init__(self, model: str = DEFAULT_MODEL, url: str = DEFAULT_URL):
+    available = get_available_models()
+    
+    for preferred in PREFERRED_MODELS:
+        if preferred in available:
+            return preferred
+    
+    # Fallback to first available or llama3.1
+    return available[0] if available else "llama3.1"
+
+
+class OllamaModel:
+    """Local LLM interface via Ollama with auto-detection."""
+    
+    def __init__(self, model: str = "auto", url: str = DEFAULT_URL):
+        if model == "auto":
+            model = detect_best_model()
         self.model = model
         self.url = url
         self.last_duration = 0
