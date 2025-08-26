@@ -4,6 +4,7 @@ import typer
 from .agent import Agent
 from .model_ollama import OllamaModel
 from .judge import rule_judge
+from .tools import ToolRegistry, register_default_tools
 
 app = typer.Typer(help="nano-agent: learn AI agents in one sitting")
 
@@ -27,9 +28,16 @@ def run(task: str, model: str = "auto", budget_tokens: int = 1200, max_steps: in
     
     # Execute
     result = agent.run(task, token_budget=budget_tokens)
-    passed, reason = _get_judgment(agent, task, result)
+    passed, reason = rule_judge(task, result["final"])
     _display_agent_output(result, passed, reason, trace_format=trace_format, verbose=verbose)
 
+
+def _display_agent_output(result, passed, reason, trace_format, verbose):
+    status = "✓" if passed else "✗"
+    print(f"\nAnswer: {result['final']} {status}")
+    if not passed:
+        print(f"Issue: {reason}")
+    print("-" * 40)
 
 @app.command()
 def playground(model: str = "auto", max_steps: int = 6, verbose: bool = False, trace_format: str = "compact"):

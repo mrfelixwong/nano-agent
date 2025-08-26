@@ -72,21 +72,24 @@ def date_calc(arg: str) -> str:
     return "error: use 'days_between YYYY-MM-DD YYYY-MM-DD' or 'YYYY-MM-DD +/- Nd'"
 
 
-TOOLS = {
-    "calculator": ("Use for ALL math: multiply, divide, add, subtract, percentages.", calculator),
-    "unit_convert": ("Convert temperature/distance/weight units ONLY.", unit_convert),
-    "date_calc": ("Calculate days between dates or add/subtract days from dates ONLY.", date_calc)
-}
 
+class ToolRegistry:
+    def __init__(self):
+        self.tools = {}
 
-def get_tools_spec():
-    """Get tool specifications for the agent prompt."""
-    return [{"name": name, "description": desc} for name, (desc, _) in TOOLS.items()]
+    def register(self, name, description, func):
+        self.tools[name] = (description, func)
 
+    def get_tools_spec(self):
+        return [{"name": name, "description": desc} for name, (desc, _) in self.tools.items()]
 
-def execute_tool(name: str, arg: str) -> str:
-    """Execute a tool by name."""
-    if name not in TOOLS:
-        return f"error: unknown tool '{name}'"
-    _, func = TOOLS[name]
-    return func(arg)
+    def execute_tool(self, name: str, arg: str) -> str:
+        if name not in self.tools:
+            return f"error: unknown tool '{name}'"
+        _, func = self.tools[name]
+        return func(arg)
+
+def register_default_tools(registry):
+    registry.register("calculator", "Use for ALL math: multiply, divide, add, subtract, percentages.", calculator)
+    registry.register("unit_convert", "Convert temperature/distance/weight units ONLY.", unit_convert)
+    registry.register("date_calc", "Calculate days between dates or add/subtract days from dates ONLY.", date_calc)

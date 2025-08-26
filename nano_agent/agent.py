@@ -4,20 +4,20 @@ import json
 import os
 from typing import Dict, List
 
-from .tools import get_tools_spec, execute_tool
 
 
 class Agent:
     """Minimal agent showing observe-think-act loop."""
     
-    def __init__(self, model, max_steps: int = 6, verbose: bool = False):
+    def __init__(self, model, tools, max_steps: int = 6, verbose: bool = False):
         self.model = model
+        self.tools = tools
         self.max_steps = max_steps
         self.verbose = verbose or os.environ.get('NANO_AGENT_VERBOSE', '').lower() in ('1', 'true')
     
-    def run(self, task: str) -> Dict:
+    def run(self, task: str, token_budget: int) -> Dict:
         """Execute task using observe-think-act loop."""
-        tools_spec = json.dumps(get_tools_spec())
+        tools_spec = json.dumps(self.tools.get_tools_spec())
         observations = []
         trace = []
         
@@ -37,7 +37,7 @@ Task complete. Return the answer:
 Tools: {tools_spec}
 Context: {context}
 
-Respond with JSON:
+Respond with JSON only:
 {{"action": "CALL", "tool_name": "...", "argument": "..."}}
 {{"action": "FINAL", "answer": "..."}}"""
             
@@ -67,7 +67,7 @@ Respond with JSON:
                 if self.verbose:
                     print(f"Calling {tool_name}('{argument}')")
                 
-                result = execute_tool(tool_name, argument)
+                result = self.tools.execute_tool(tool_name, argument)
                 observation = f"Tool '{tool_name}' returned: {result}"
                 observations.append(observation)
                 

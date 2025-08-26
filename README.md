@@ -7,11 +7,20 @@ Learn AI agents from scratch. Under 200 lines of code. No frameworks.
 ```bash
 # 1. Install Ollama (local LLM runtime - one-time setup)
 brew install ollama        # macOS (or see ollama.ai for Linux/Windows)
-ollama run llama4        # Downloads ~5GB model, runs locally forever
-#ollama run llama3.1      # Or download the previous version
+ollama run llama3.1   # Downloads the default model (~5GB)
+# The agent will auto-detect and use the best available model.
+# Supported models (in fallback order):
+# 1. gpt-oss:20b
+# 2. qwen3:30b
+# 3. gemma3:27b-it-qat
+# 4. llama3.1:latest
 
 # Run agent
 pip install -e .
+python -m nano_agent run "Calculate 15% of 200"
+
+# To use a specific model, set the OLLAMA_MODEL environment variable
+export OLLAMA_MODEL="gpt-oss:20b"
 python -m nano_agent run "Calculate 15% of 200"
 ```
 
